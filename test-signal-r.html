@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cascade SignalR Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+</head>
+<body>
+    <h1>Cascade SignalR Test</h1>
+    <div id="status">Connecting...</div>
+    <h2>Events:</h2>
+    <pre id="events" style="background:#f0f0f0;padding:10px;max-height:400px;overflow:auto;"></pre>
+
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("http://localhost:5100/hubs/flow")
+            .withAutomaticReconnect()
+            .build();
+
+        const log = (msg) => {
+            const events = document.getElementById("events");
+            events.textContent = `[${new Date().toLocaleTimeString()}] ${msg}\n` + events.textContent;
+        };
+
+        connection.on("InitialState", (flows) => {
+            log(`InitialState: ${flows.length} flows`);
+        });
+
+        connection.on("TopologyUpdated", (topology) => {
+            log(`TopologyUpdated: ${topology.endpointCount} endpoints, ${topology.connectionCount} connections`);
+        });
+
+        connection.on("TelemetryReceived", (telemetry) => {
+            log(`TelemetryReceived: ${telemetry.endpointName} | ${telemetry.messageTypeShort}`);
+        });
+
+        connection.on("FlowUpdated", (flow) => {
+            log(`FlowUpdated: ${flow.correlationId} (${flow.messageCount} messages)`);
+        });
+
+        connection.start()
+            .then(() => {
+                document.getElementById("status").textContent = "Connected ✓";
+                document.getElementById("status").style.color = "green";
+                log("Connected to SignalR hub");
+            })
+            .catch(err => {
+                document.getElementById("status").textContent = "Failed to connect";
+                document.getElementById("status").style.color = "red";
+                log(`Error: ${err}`);
+            });
+    </script>
+</body>
+</html>
