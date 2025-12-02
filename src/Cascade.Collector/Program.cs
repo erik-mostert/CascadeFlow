@@ -5,6 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Register services
 builder.Services.AddSingleton<IFlowAggregator, InMemoryFlowAggregator>();
+builder.Services.AddSingleton<ITopologyAggregator, InMemoryTopologyAggregator>();
 
 // Configure CORS for frontend development
 builder.Services.AddCors(options =>
@@ -30,9 +31,13 @@ app.MapGet("/api/health", () => new
 });
 
 // Telemetry ingestion endpoint
-app.MapPost("/api/telemetry", (MessageTelemetry telemetry, IFlowAggregator aggregator) =>
+app.MapPost("/api/telemetry", (
+    MessageTelemetry telemetry,
+    IFlowAggregator flowAggregator,
+    ITopologyAggregator topologyAggregator) =>
 {
-  var flow = aggregator.AddMessage(telemetry);
+  var flow = flowAggregator.AddMessage(telemetry);
+  topologyAggregator.RecordMessage(telemetry);
 
   Console.WriteLine($"[{telemetry.Timestamp:HH:mm:ss.fff}] {telemetry.Direction} | {telemetry.EndpointName} | {telemetry.MessageTypeShort} | Flow: {flow.CorrelationId} ({flow.MessageCount} msgs)");
 
@@ -49,8 +54,15 @@ app.MapGet("/api/flows/{correlationId}", (string correlationId, IFlowAggregator 
   return flow is not null ? Results.Ok(flow) : Results.NotFound();
 });
 
-// Placeholder for topology
-app.MapGet("/api/topology", () => Results.Ok(new SystemTopology()));
+// Topology endpoints
+app.MapGet("/api/topology", (ITopologyAggregator aggregator) =>
+    Results.Ok(aggregator.GetTopology()));
+
+app.MapPost("/api/topology/reset", (ITopologyAggregator aggregator) =>
+{
+  aggregator.Reset();
+  return Results.Ok(new { reset = true });
+});
 
 Console.WriteLine("Cascade Collector running at http://localhost:5100");
 
