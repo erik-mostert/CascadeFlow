@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/docker/" />
+  <Folder Name="/samples/">
+    <Project Path="samples/Cascade.Sample.BillingService/Cascade.Sample.BillingService.csproj" />
+    <Project Path="samples/Cascade.Sample.Contracts/Cascade.Sample.Contracts.csproj" />
+    <Project Path="samples/Cascade.Sample.NotificationService/Cascade.Sample.NotificationService.csproj" />
+    <Project Path="samples/Cascade.Sample.OrderService/Cascade.Sample.OrderService.csproj" />
+    <Project Path="samples/Cascade.Sample.ShippingService/Cascade.Sample.ShippingService.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="nuget.config" />
+    <File Path="pack-local.ps1" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Cascade.Collector/Cascade.Collector.csproj" />
+    <Project Path="src/Cascade.Core/Cascade.Core.csproj" />
+    <Project Path="src/Cascade.NServiceBus/Cascade.NServiceBus.csproj" />
+    <Project Path="src/Cascade.Tool/Cascade.Tool.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+</Solution>
