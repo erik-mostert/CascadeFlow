@@ -7,4 +7,16 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+    <ItemGroup>
+        <PackageReference Include="NServiceBus" Version="9.2.7" />
+        <PackageReference Include="NServiceBus.Extensions.Hosting" Version="3.0.1" />
+        <PackageReference Include="NServiceBus.Newtonsoft.Json" Version="4.1.0" />
+        <PackageReference Include="NServiceBus.Transport.SqlServer" Version="8.1.10" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Cascade.NServiceBus\Cascade.NServiceBus.csproj" />
+        <ProjectReference Include="..\Cascade.Sample.Contracts\Cascade.Sample.Contracts.csproj" />
+    </ItemGroup>
+    
 </Project>

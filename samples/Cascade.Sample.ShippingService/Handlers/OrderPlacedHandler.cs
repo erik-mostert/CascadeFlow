@@ -1,19 +1,13 @@
 ﻿using Cascade.Sample.Contracts.Events;
 using Microsoft.Extensions.Logging;
-using NServiceBus;
 
-namespace Cascade.Sample.Shipping.Handlers;
+namespace Cascade.Sample.ShippingService.Handlers;
 
-public class OrderPlacedHandler : IHandleMessages<OrderPlaced>
+public class OrderPlacedHandler(ILogger<OrderPlacedHandler> logger) : IHandleMessages<OrderPlaced>
 {
-  private readonly ILogger<OrderPlacedHandler> _logger;
+  private readonly ILogger<OrderPlacedHandler> _logger = logger;
 
-  public OrderPlacedHandler(ILogger<OrderPlacedHandler> logger)
-  {
-    _logger = logger;
-  }
-
-  public async Task Handle(OrderPlaced message, IMessageHandlerContext context)
+    public async Task Handle(OrderPlaced message, IMessageHandlerContext context)
   {
     _logger.LogInformation("Shipping received OrderPlaced for {OrderId}", message.OrderId);
 

@@ -156,59 +156,117 @@ interface GraphEdge {
 function buildGraphElements(flow: MessageFlow): (GraphNode | GraphEdge)[] {
     const nodes: GraphNode[] = [];
     const edges: GraphEdge[] = [];
+    const addedNodeIds = new Set<string>();
+    const addedEdgeIds = new Set<string>();
 
     // Sort messages by effective time
     const sortedMessages = [...flow.messages].sort((a, b) => {
         return getEffectiveTime(a) - getEffectiveTime(b);
     });
 
-    // Build a linear sequence of steps
-    const steps: { type: 'endpoint' | 'message'; label: string; failed: boolean }[] = [];
+    const publishedMessages = sortedMessages.filter(m => m.direction === 1);
+    const handledMessages = sortedMessages.filter(m => m.direction === 0);
 
-    let lastEndpoint: string | null = null;
-
-    sortedMessages.forEach(msg => {
-        if (msg.direction === 1) {
-            // Published message - add endpoint only if different from last
-            if (msg.endpointName !== lastEndpoint) {
-                steps.push({ type: 'endpoint', label: msg.endpointName, failed: false });
-                lastEndpoint = msg.endpointName;
-            }
-            // Add the message
-            steps.push({ type: 'message', label: msg.messageTypeShort, failed: false });
-        } else {
-            // Handled message - always add endpoint (message flows TO here)
-            steps.push({ type: 'endpoint', label: msg.endpointName, failed: msg.success === false });
-            lastEndpoint = msg.endpointName;
-        }
-    });
-
-    // Create nodes for each step
-    steps.forEach((step, index) => {
-        nodes.push({
-            data: {
-                id: `step-${index}`,
-                label: step.label,
-                type: step.type,
-                failed: step.failed ? 'true' : 'false',
-            },
-        });
-
-        // Create edge from previous step
-        if (index > 0) {
-            const prevStep = steps[index - 1];
-            // endpoint → message = published (blue), message → endpoint = handled (green)
-            const edgeType = prevStep.type === 'endpoint' ? 'published' : 'handled';
-
-            edges.push({
-                data: {
-                    id: `edge-${index - 1}-${index}`,
-                    source: `step-${index - 1}`,
-                    target: `step-${index}`,
-                    edgeType: edgeType,
-                },
+    // Helper to add a node
+    const addNode = (id: string, label: string, type: 'endpoint' | 'message', failed: boolean = false) => {
+        if (!addedNodeIds.has(id)) {
+            nodes.push({
+                data: { id, label, type, failed: failed ? 'true' : 'false' },
             });
+            addedNodeIds.add(id);
         }
+        return id;
+    };
+
+    // Helper to add an edge
+    const addEdge = (sourceId: string, targetId: string, edgeType: 'published' | 'handled') => {
+        const id = `${sourceId}->${targetId}`;
+        if (!addedEdgeIds.has(id)) {
+            edges.push({
+                data: { id, source: sourceId, target: targetId, edgeType },
+            });
+            addedEdgeIds.add(id);
+        }
+    };
+
+    // Track which published messages we've processed
+    const processedPublished = new Set<string>();
+
+    // Process each handled message and trace back to its publisher
+    handledMessages.forEach(handled => {
+        const handlerNodeId = `handler-${handled.endpointName}-${handled.messageId}`;
+        addNode(handlerNodeId, handled.endpointName, 'endpoint', handled.success === false);
+
+        // Find the published message that this handler received
+        const publishedMsg = publishedMessages.find(p => 
+            p.messageTypeShort === handled.messageTypeShort &&
+            getEffectiveTime(p) < getEffectiveTime(handled)
+        );
+
+        if (publishedMsg && !processedPublished.has(publishedMsg.id)) {
+            // Create message node
+            const messageNodeId = `msg-${publishedMsg.messageId}`;
+            addNode(messageNodeId, publishedMsg.messageTypeShort, 'message');
+
+            // Create publisher endpoint node
+            const publisherNodeId = `publisher-${publishedMsg.endpointName}-${publishedMsg.messageId}`;
+            addNode(publisherNodeId, publishedMsg.endpointName, 'endpoint');
+
+            // Check if this published message was caused by a handled message
+            const causingHandler = handledMessages.find(h =>
+                h.endpointName === publishedMsg.endpointName &&
+                getEffectiveTime(h) <= getEffectiveTime(publishedMsg) &&
+                getEffectiveTime(publishedMsg) - getEffectiveTime(h) < 1000 // Within 1 second
+            );
+
+            if (causingHandler) {
+                // Find what message the causing handler was processing
+                const causingPublished = publishedMessages.find(p =>
+                    p.messageTypeShort === causingHandler.messageTypeShort &&
+                    getEffectiveTime(p) < getEffectiveTime(causingHandler)
+                );
+
+                if (causingPublished) {
+                    const causingMsgNodeId = `msg-${causingPublished.messageId}`;
+                    // Make sure the causing message node exists
+                    addNode(causingMsgNodeId, causingPublished.messageTypeShort, 'message');
+                    
+                    // Edge: causing message → publisher endpoint
+                    addEdge(causingMsgNodeId, publisherNodeId, 'handled');
+                }
+            }
+
+            // Edge: publisher → message
+            addEdge(publisherNodeId, messageNodeId, 'published');
+
+            processedPublished.add(publishedMsg.id);
+        }
+
+        // Find the message node this handler receives from
+        const incomingMsgNode = publishedMessages.find(p =>
+            p.messageTypeShort === handled.messageTypeShort &&
+            getEffectiveTime(p) < getEffectiveTime(handled)
+        );
+
+        if (incomingMsgNode) {
+            const messageNodeId = `msg-${incomingMsgNode.messageId}`;
+            addNode(messageNodeId, incomingMsgNode.messageTypeShort, 'message');
+            addEdge(messageNodeId, handlerNodeId, 'handled');
+        }
+
+        // Find messages published by this handler
+        const publishedByHandler = publishedMessages.filter(p =>
+            p.endpointName === handled.endpointName &&
+            getEffectiveTime(p) > getEffectiveTime(handled) &&
+            getEffectiveTime(p) - getEffectiveTime(handled) < 1000
+        );
+
+        publishedByHandler.forEach(pub => {
+            const pubMsgNodeId = `msg-${pub.messageId}`;
+            addNode(pubMsgNodeId, pub.messageTypeShort, 'message');
+            addEdge(handlerNodeId, pubMsgNodeId, 'published');
+            processedPublished.add(pub.id);
+        });
     });
 
     return [...nodes, ...edges];
