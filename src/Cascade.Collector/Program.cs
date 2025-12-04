@@ -1,13 +1,22 @@
-﻿using Microsoft.AspNetCore.SignalR;
-using Cascade.Core.Models;
+﻿using Cascade.Collector.Data;
 using Cascade.Collector.Hubs;
 using Cascade.Collector.Services;
+using Cascade.Core.Models;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add database context
+var connectionString = builder.Configuration.GetConnectionString("CascadeDb")
+    ?? "Server=localhost;Database=CascadeCollector;Trusted_Connection=True;TrustServerCertificate=True;";
+
+builder.Services.AddDbContext<CascadeDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
 // Register services
-builder.Services.AddSingleton<IFlowAggregator, InMemoryFlowAggregator>();
-builder.Services.AddSingleton<ITopologyAggregator, InMemoryTopologyAggregator>();
+builder.Services.AddSingleton<IFlowAggregator, SqlServerFlowAggregator>();
+builder.Services.AddSingleton<ITopologyAggregator, SqlServerTopologyAggregator>();
 builder.Services.AddSignalR();
 
 // Configure CORS for frontend development

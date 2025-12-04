@@ -1,12 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using NServiceBus;
+﻿using Microsoft.Extensions.Hosting;
 
 Console.Title = "Shipping";
 
 var builder = Host.CreateApplicationBuilder(args);
 
-var endpointConfiguration = new EndpointConfiguration("Shipping");
+var endpointConfiguration = new EndpointConfiguration("ShippingService");
 
 // Serializer
 endpointConfiguration.UseSerialization<NewtonsoftJsonSerializer>();
