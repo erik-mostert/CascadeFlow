@@ -3,14 +3,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Cascade.Sample.NotificationService.Handlers;
 
-public class OrderPlacedHandler : IHandleMessages<OrderPlaced>
+public class OrderPlacedHandler(ILogger<OrderPlacedHandler> logger) : IHandleMessages<OrderPlaced>
 {
-    private readonly ILogger<OrderPlacedHandler> _logger;
-
-    public OrderPlacedHandler(ILogger<OrderPlacedHandler> logger)
-    {
-        _logger = logger;
-    }
+    private readonly ILogger<OrderPlacedHandler> _logger = logger;
 
     public async Task Handle(OrderPlaced message, IMessageHandlerContext context)
     {
