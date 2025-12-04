@@ -8,6 +8,7 @@ export interface MessageTelemetry {
   correlationId?: string;
   conversationId?: string;
   causationId?: string;
+  relatedTo?: string;
   messageType: string;
   messageTypeShort: string;
   endpointName: string;
