@@ -2,6 +2,7 @@
 using Cascade.Collector.Hubs;
 using Cascade.Collector.Services;
 using Cascade.Core.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
@@ -84,6 +85,62 @@ app.MapPost("/api/topology/reset", (ITopologyAggregator aggregator) =>
 {
   aggregator.Reset();
   return Results.Ok(new { reset = true });
+});
+
+// Historical flow queries
+app.MapGet("/api/flows/history", async (
+    IFlowAggregator aggregator,
+    [FromQuery] DateTimeOffset? start,
+    [FromQuery] DateTimeOffset? end,
+    [FromQuery] int maxResults = 100) =>
+{
+  var startTime = start ?? DateTimeOffset.UtcNow.AddHours(-1);
+  var endTime = end ?? DateTimeOffset.UtcNow;
+
+  var flows = await aggregator.GetFlowsInTimeRangeAsync(startTime, endTime, maxResults);
+  return Results.Ok(flows);
+});
+
+app.MapGet("/api/flows/search", async (
+    IFlowAggregator aggregator,
+    [FromQuery] string? endpoint,
+    [FromQuery] string? messageType,
+    [FromQuery] bool? hasFailures,
+    [FromQuery] int maxResults = 100) =>
+{
+  var flows = await aggregator.SearchFlowsAsync(endpoint, messageType, hasFailures, maxResults);
+  return Results.Ok(flows);
+});
+
+app.MapGet("/api/flows/{correlationId}/full", async (
+    IFlowAggregator aggregator,
+    string correlationId) =>
+{
+  // Try memory first, then database
+  var flow = aggregator.GetFlow(correlationId)
+      ?? await aggregator.GetFlowFromDatabaseAsync(correlationId);
+
+  return flow is not null ? Results.Ok(flow) : Results.NotFound();
+});
+
+// Message statistics endpoint
+app.MapGet("/api/stats", async (
+    IFlowAggregator flowAggregator,
+    ITopologyAggregator topologyAggregator,
+    [FromQuery] DateTimeOffset? since) =>
+{
+  var topology = topologyAggregator.GetTopology();
+  var activeFlows = flowAggregator.GetActiveFlows().ToList();
+
+  return Results.Ok(new
+  {
+    ActiveFlows = activeFlows.Count,
+    TotalEndpoints = topology.EndpointCount,
+    TotalConnections = topology.ConnectionCount,
+    TotalMessages = topology.TotalMessagesObserved,
+    FailedFlows = activeFlows.Count(f => f.HasFailures),
+    LastUpdated = topology.LastUpdated
+  });
 });
 
 Console.WriteLine("Cascade Collector running at http://localhost:5100");
