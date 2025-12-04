@@ -55,6 +55,25 @@ export function FlowDetail({ flow }: FlowDetailProps) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                     </svg>
                 </button>
+                {/* Mini legend */}
+                <div className="absolute bottom-2 left-2 flex gap-3 text-xs bg-gray-800/80 rounded px-2 py-1">
+                    <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded bg-blue-600 border border-blue-400"></div>
+                        <span className="text-gray-400">Published</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded bg-green-600 border border-green-400"></div>
+                        <span className="text-gray-400">Handled</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded border-2 border-yellow-500"></div>
+                        <span className="text-gray-400">Slow</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded bg-red-900 border border-red-500"></div>
+                        <span className="text-gray-400">Failed</span>
+                    </div>
+                </div>
             </div>
 
             {/* Expanded Graph Modal */}

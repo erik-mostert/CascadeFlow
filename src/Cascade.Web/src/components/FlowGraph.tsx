@@ -70,6 +70,14 @@ export function FlowGraph({ flow, expanded = false }: FlowGraphProps) {
                         "border-color": "#ef4444",
                     },
                 },
+                // Slow handler nodes (> 100ms)
+                {
+                    selector: 'node[slow="true"]',
+                    style: {
+                        "border-color": "#f59e0b",
+                        "border-width": 3,
+                    },
+                },
                 // Edge styles
                 {
                     selector: "edge",
@@ -142,6 +150,7 @@ interface GraphNode {
         label: string;
         type: "endpoint" | "message";
         failed?: string;
+        slow?: string;
     };
 }
 
@@ -165,11 +174,12 @@ function buildGraphElements(flow: MessageFlow): (GraphNode | GraphEdge)[] {
         id: string,
         label: string,
         type: "endpoint" | "message",
-        failed: boolean = false
+        failed: boolean = false,
+        slow: boolean = false
     ): string => {
         if (!addedNodeIds.has(id)) {
             nodes.push({
-                data: { id, label, type, failed: failed ? "true" : "false" },
+                data: { id, label, type, failed: failed ? "true" : "false", slow: slow ? "true" : "false" },
             });
             addedNodeIds.add(id);
         }
@@ -191,11 +201,28 @@ function buildGraphElements(flow: MessageFlow): (GraphNode | GraphEdge)[] {
     };
 
     // Helper to build label with retry count
-    const buildHandlerLabel = (endpointName: string, retryCount?: number): string => {
-        if (retryCount !== undefined && retryCount > 0) {
-            return `${endpointName}\n(retry #${retryCount})`;
+    // Helper to build label with retry count and duration
+    const buildHandlerLabel = (
+        endpointName: string,
+        retryCount?: number,
+        processingDuration?: string
+    ): string => {
+        let label = endpointName;
+
+        if (processingDuration) {
+            const ms = parseDuration(processingDuration);
+            if (ms >= 1000) {
+                label += `\n${(ms / 1000).toFixed(2)}s`;
+            } else {
+                label += `\n${ms.toFixed(0)}ms`;
+            }
         }
-        return endpointName;
+
+        if (retryCount !== undefined && retryCount > 0) {
+            label += `\n(retry #${retryCount})`;
+        }
+
+        return label;
     };
 
     // Sort by effective time
@@ -242,9 +269,14 @@ function buildGraphElements(flow: MessageFlow): (GraphNode | GraphEdge)[] {
                     // Create the handler node if it doesn't exist
                     handlerNodeId = addNode(
                         `hdl-${handlerKey}`,
-                        buildHandlerLabel(causingHandler.endpointName, causingHandler.retryCount),
+                        buildHandlerLabel(
+                            causingHandler.endpointName,
+                            causingHandler.retryCount,
+                            causingHandler.processingDuration
+                        ),
                         "endpoint",
-                        causingHandler.success === false
+                        causingHandler.success === false,
+                        isSlow(causingHandler.processingDuration)
                     );
                     handlerNodeIds.set(handlerKey, handlerNodeId);
                 }
@@ -279,9 +311,14 @@ function buildGraphElements(flow: MessageFlow): (GraphNode | GraphEdge)[] {
             if (!handlerNodeId) {
                 handlerNodeId = addNode(
                     `hdl-${handlerKey}`,
-                    buildHandlerLabel(handler.endpointName, handler.retryCount),
+                    buildHandlerLabel(
+                        handler.endpointName,
+                        handler.retryCount,
+                        handler.processingDuration
+                    ),
                     "endpoint",
-                    handler.success === false
+                    handler.success === false,
+                    isSlow(handler.processingDuration)
                 );
                 handlerNodeIds.set(handlerKey, handlerNodeId);
             }
@@ -292,6 +329,13 @@ function buildGraphElements(flow: MessageFlow): (GraphNode | GraphEdge)[] {
     });
 
     return [...nodes, ...edges];
+}
+
+const SLOW_THRESHOLD_MS = 100;
+
+function isSlow(processingDuration?: string): boolean {
+    if (!processingDuration) return false;
+    return parseDuration(processingDuration) > SLOW_THRESHOLD_MS;
 }
 
 function getEffectiveTime(msg: MessageFlow["messages"][0]): number {
