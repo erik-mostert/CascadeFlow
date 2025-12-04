@@ -35,26 +35,24 @@ function App() {
               NServiceBus Flow Visualization
             </span>
           </div>
-          
+
           {/* View Toggle */}
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('flows')}
-              className={`px-4 py-2 rounded transition-colors ${
-                viewMode === 'flows'
+              className={`px-4 py-2 rounded transition-colors ${viewMode === 'flows'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
+                }`}
             >
               Flows
             </button>
             <button
               onClick={() => setViewMode('topology')}
-              className={`px-4 py-2 rounded transition-colors ${
-                viewMode === 'topology'
+              className={`px-4 py-2 rounded transition-colors ${viewMode === 'topology'
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
+                }`}
             >
               Topology
             </button>
@@ -73,15 +71,14 @@ function App() {
                 Clear Flows
               </button>
             )}
-            
+
             {/* Connection status */}
             <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${
-                connectionStatus === 'connected' ? 'bg-green-500' :
-                connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
-                connectionStatus === 'error' ? 'bg-red-500' :
-                'bg-gray-500'
-              }`}></span>
+              <span className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' :
+                  connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                    connectionStatus === 'error' ? 'bg-red-500' :
+                      'bg-gray-500'
+                }`}></span>
               <span className="text-sm text-gray-400 capitalize">{connectionStatus}</span>
             </div>
           </div>
@@ -114,10 +111,16 @@ function App() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
             {/* Flow List - Left Panel */}
             <div className="lg:col-span-1 h-full overflow-hidden">
-              <FlowList 
+              <FlowList
                 flows={flows}
                 selectedFlowId={selectedFlowId}
                 onSelectFlow={setSelectedFlowId}
+                onFlowsLoaded={(loadedFlows) => {
+                  // Auto-select first result if current selection not in results
+                  if (loadedFlows.length > 0 && !loadedFlows.find(f => f.correlationId === selectedFlowId)) {
+                    setSelectedFlowId(loadedFlows[0].correlationId);
+                  }
+                }}
               />
             </div>
 
