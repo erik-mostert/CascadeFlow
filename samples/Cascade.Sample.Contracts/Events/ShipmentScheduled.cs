@@ -8,6 +8,6 @@ namespace Cascade.Sample.Contracts.Events;
 public class ShipmentScheduled : IEvent
 {
   public required string OrderId { get; init; }
-  public required string ShipmentId { get; init; }
+  public required Guid ShipmentId { get; init; }
   public required DateTimeOffset EstimatedDelivery { get; init; }
 }
