@@ -14,6 +14,7 @@ public class InMemoryFlowAggregator : IFlowAggregator
   private readonly TimeSpan _flowTimeout = TimeSpan.FromMinutes(5);
   private readonly int _maxFlows = 1000;
 
+  /// <inheritdoc/>
   public MessageFlow AddMessage(MessageTelemetry telemetry)
   {
     var correlationId = telemetry.CorrelationId ?? telemetry.MessageId;
@@ -40,16 +41,63 @@ public class InMemoryFlowAggregator : IFlowAggregator
     return flow;
   }
 
+  /// <inheritdoc/>
   public MessageFlow? GetFlow(string correlationId)
   {
     return _flows.TryGetValue(correlationId, out var flow) ? flow : null;
   }
 
+  /// <inheritdoc/>
   public IEnumerable<MessageFlow> GetActiveFlows()
   {
     return _flows.Values
         .OrderByDescending(f => f.StartedAt)
         .Take(100);
+  }
+
+  /// <inheritdoc/>
+  public Task<MessageFlow?> GetFlowFromDatabaseAsync(string correlationId)
+  {
+    // In-memory doesn't have a database, just return from memory
+    return Task.FromResult(GetFlow(correlationId));
+  }
+
+  /// <inheritdoc/>
+  public Task<IEnumerable<MessageFlow>> GetFlowsInTimeRangeAsync(DateTimeOffset start, DateTimeOffset end, int maxResults = 100)
+  {
+    var flows = _flows.Values
+        .Where(f => f.StartedAt >= start && f.StartedAt <= end)
+        .OrderByDescending(f => f.StartedAt)
+        .Take(maxResults);
+
+    return Task.FromResult(flows);
+  }
+
+  /// <inheritdoc/>
+  public Task<IEnumerable<MessageFlow>> SearchFlowsAsync(string? endpoint = null, string? messageType = null, bool? hasFailures = null, int maxResults = 100)
+  {
+    var query = _flows.Values.AsEnumerable();
+
+    if (!string.IsNullOrEmpty(endpoint))
+    {
+      query = query.Where(f => f.Messages.Any(m => m.EndpointName.Contains(endpoint, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    if (!string.IsNullOrEmpty(messageType))
+    {
+      query = query.Where(f => f.Messages.Any(m => m.MessageTypeShort.Contains(messageType, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    if (hasFailures.HasValue)
+    {
+      query = query.Where(f => f.HasFailures == hasFailures.Value);
+    }
+
+    var results = query
+        .OrderByDescending(f => f.StartedAt)
+        .Take(maxResults);
+
+    return Task.FromResult(results);
   }
 
   private void UpdateFlowStatus(MessageFlow flow)
