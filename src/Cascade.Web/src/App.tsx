@@ -1,25 +1,72 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useFlowHub } from './hooks/useFlowHub';
 import { FlowList } from './components/FlowList';
 import { FlowDetail } from './components/FlowDetail';
 import { TopologyView } from './components/TopologyView';
 import { ConnectionStatus } from './components/ConnectionStatus';
+import { getFlowById } from './services/api';
+import type { MessageFlow } from './types';
 
 type ViewMode = 'flows' | 'topology';
 
 function App() {
   const { connectionStatus, flows, topology, clearFlows } = useFlowHub();
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
+  const [fetchedFlow, setFetchedFlow] = useState<MessageFlow | null>(null);
+  const [fetchedFlowId, setFetchedFlowId] = useState<string | null>(null);
+  const [isLoadingFlow, setIsLoadingFlow] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('flows');
 
-  // Auto-select the first flow when new flows arrive and none selected
-  useEffect(() => {
-    if (flows.length > 0 && !selectedFlowId) {
-      setSelectedFlowId(flows[0].correlationId);
-    }
-  }, [flows, selectedFlowId]);
+  // Derive the effective selected ID - fall back to first flow if none selected
+  const effectiveSelectedId = selectedFlowId ?? (flows.length > 0 ? flows[0].correlationId : null);
 
-  const selectedFlow = flows.find(f => f.correlationId === selectedFlowId) ?? null;
+  // Find flow in memory
+  const memoryFlow = useMemo(() => 
+    flows.find(f => f.correlationId === effectiveSelectedId) ?? null,
+    [flows, effectiveSelectedId]
+  );
+
+  // Determine if we need to fetch
+  const needsFetch = effectiveSelectedId !== null && memoryFlow === null && fetchedFlowId !== effectiveSelectedId;
+
+  // Fetch from API only when needed
+  useEffect(() => {
+  if (!needsFetch || !effectiveSelectedId) {
+    return;
+  }
+
+  let cancelled = false;
+  setIsLoadingFlow(true);
+  
+  const flowIdToFetch = effectiveSelectedId;
+  
+  getFlowById(flowIdToFetch)
+    .then(flow => {
+      if (!cancelled) {
+        setFetchedFlow(flow);
+        setFetchedFlowId(flowIdToFetch);
+        setIsLoadingFlow(false);
+      }
+    })
+    .catch(err => {
+      console.error('Failed to fetch flow:', err);
+      if (!cancelled) {
+        setFetchedFlow(null);
+        setFetchedFlowId(flowIdToFetch);
+        setIsLoadingFlow(false);
+      }
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, [needsFetch, effectiveSelectedId]);
+
+  // Use memory flow if available, otherwise use fetched flow (if it matches current selection)
+  const selectedFlow = memoryFlow ?? (fetchedFlowId === effectiveSelectedId ? fetchedFlow : null);
+  
+  // Show loading if we need to fetch or are currently fetching
+  const showLoading = isLoadingFlow || (needsFetch && !selectedFlow);
 
   return (
     <div className="h-screen flex flex-col bg-gray-900 text-white">
@@ -113,11 +160,11 @@ function App() {
             <div className="lg:col-span-1 h-full overflow-hidden">
               <FlowList
                 flows={flows}
-                selectedFlowId={selectedFlowId}
+                selectedFlowId={effectiveSelectedId}
                 onSelectFlow={setSelectedFlowId}
                 onFlowsLoaded={(loadedFlows) => {
                   // Auto-select first result if current selection not in results
-                  if (loadedFlows.length > 0 && !loadedFlows.find(f => f.correlationId === selectedFlowId)) {
+                  if (loadedFlows.length > 0 && !loadedFlows.find(f => f.correlationId === effectiveSelectedId)) {
                     setSelectedFlowId(loadedFlows[0].correlationId);
                   }
                 }}
@@ -126,7 +173,7 @@ function App() {
 
             {/* Flow Detail - Right Panel */}
             <div className="lg:col-span-2 h-full overflow-hidden">
-              <FlowDetail flow={selectedFlow} />
+              <FlowDetail flow={selectedFlow} isLoading={showLoading} />
             </div>
           </div>
         ) : (
