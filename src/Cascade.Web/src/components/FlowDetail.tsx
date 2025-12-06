@@ -1,8 +1,10 @@
-import { useState } from "react";
-import type { MessageFlow } from "../types";
-import { FlowGraph } from "./FlowGraph";
-import { Modal } from "./Modal";
-import { ErrorDetails } from "./ErrorDetails";
+import { useState, useRef } from 'react';
+import type { MessageFlow } from '../types';
+import { FlowGraph, type FlowGraphRef } from './FlowGraph';
+import { Modal } from './Modal';
+import { ErrorDetails } from './ErrorDetails';
+import { ExportButton } from './ExportButton';
+import { downloadPng, downloadFile, flowToCsv } from '../utils/download';
 
 interface FlowDetailProps {
   flow: MessageFlow | null;
@@ -11,6 +13,36 @@ interface FlowDetailProps {
 
 export function FlowDetail({ flow, isLoading = false }: FlowDetailProps) {
   const [isGraphExpanded, setIsGraphExpanded] = useState(false);
+  const graphRef = useRef<FlowGraphRef>(null);
+  const expandedGraphRef = useRef<FlowGraphRef>(null);
+
+  const handleExportPng = () => {
+    const ref = isGraphExpanded ? expandedGraphRef : graphRef;
+    const dataUrl = ref.current?.exportPng();
+    if (dataUrl) {
+      downloadPng(dataUrl, `flow-${flow?.correlationId.substring(0, 8)}.png`);
+    }
+  };
+
+  const handleExportJson = () => {
+    if (flow) {
+      downloadFile(
+        JSON.stringify(flow, null, 2),
+        `flow-${flow.correlationId.substring(0, 8)}.json`,
+        'application/json'
+      );
+    }
+  };
+
+  const handleExportCsv = () => {
+    if (flow) {
+      downloadFile(
+        flowToCsv(flow),
+        `flow-${flow.correlationId.substring(0, 8)}.csv`,
+        'text/csv'
+      );
+    }
+  };
 
   if (isLoading) {
     return (
@@ -22,6 +54,7 @@ export function FlowDetail({ flow, isLoading = false }: FlowDetailProps) {
       </div>
     );
   }
+
   if (!flow) {
     return (
       <div className="bg-gray-800 rounded-lg p-4 h-full flex items-center justify-center">
@@ -34,18 +67,21 @@ export function FlowDetail({ flow, isLoading = false }: FlowDetailProps) {
     <div className="bg-gray-800 rounded-lg p-4 h-full flex flex-col overflow-hidden">
       <div className="flex justify-between items-start mb-4">
         <h2 className="text-lg font-semibold">Flow Details</h2>
-        <span
-          className={`text-xs px-2 py-1 rounded ${
-            flow.hasFailures
-              ? "bg-red-900 text-red-300"
-              : flow.status === "Completed"
-              ? "bg-green-900 text-green-300"
-              : "bg-blue-900 text-blue-300"
-          }`}
-        >
-          {flow.status}
-        </span>
+        <div className="flex items-center gap-2">
+          {/* Export buttons */}
+          <ExportButton onExport={handleExportPng} label="PNG" icon="image" />
+          <ExportButton onExport={handleExportJson} label="JSON" icon="json" />
+          <ExportButton onExport={handleExportCsv} label="CSV" icon="csv" />
+
+          <span className={`text-xs px-2 py-1 rounded ml-2 ${flow.hasFailures ? 'bg-red-900 text-red-300' :
+            flow.status === 'Completed' ? 'bg-green-900 text-green-300' :
+              'bg-blue-900 text-blue-300'
+            }`}>
+            {flow.status}
+          </span>
+        </div>
       </div>
+
 
       {/* Flow Summary */}
       <div className="bg-gray-700 rounded p-3 mb-4 text-sm flex-shrink-0">
@@ -76,24 +112,14 @@ export function FlowDetail({ flow, isLoading = false }: FlowDetailProps) {
 
       {/* Flow Graph with expand button */}
       <div className="h-[200px] mb-4 flex-shrink-0 relative">
-        <FlowGraph flow={flow} />
+        <FlowGraph ref={graphRef} flow={flow} />
         <button
           onClick={() => setIsGraphExpanded(true)}
           className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white p-1.5 rounded transition-colors"
           title="Expand graph"
         >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-            />
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
           </svg>
         </button>
         {/* Mini legend */}
@@ -123,7 +149,7 @@ export function FlowDetail({ flow, isLoading = false }: FlowDetailProps) {
         onClose={() => setIsGraphExpanded(false)}
         title={`Flow Graph - ${flow.correlationId.substring(0, 8)}...`}
       >
-        <FlowGraph flow={flow} expanded />
+        <FlowGraph ref={expandedGraphRef} flow={flow} expanded />
       </Modal>
 
       {/* Message Timeline */}
@@ -134,23 +160,21 @@ export function FlowDetail({ flow, isLoading = false }: FlowDetailProps) {
         {sortMessagesByFlow(flow.messages).map((msg, index) => (
           <div
             key={msg.id}
-            className={`rounded p-2 text-sm border-l-4 ${
-              msg.success === false
-                ? "bg-red-900/30 border-red-500"
-                : msg.direction === 0
+            className={`rounded p-2 text-sm border-l-4 ${msg.success === false
+              ? "bg-red-900/30 border-red-500"
+              : msg.direction === 0
                 ? "bg-gray-700 border-green-500"
                 : "bg-gray-700 border-blue-500"
-            }`}
+              }`}
           >
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-500">{index + 1}</span>
                 <span
-                  className={`text-xs px-1.5 py-0.5 rounded ${
-                    msg.direction === 0
-                      ? "bg-green-900 text-green-300"
-                      : "bg-blue-900 text-blue-300"
-                  }`}
+                  className={`text-xs px-1.5 py-0.5 rounded ${msg.direction === 0
+                    ? "bg-green-900 text-green-300"
+                    : "bg-blue-900 text-blue-300"
+                    }`}
                 >
                   {msg.direction === 0 ? "↓ Handled" : "↑ Published"}
                 </span>
@@ -219,6 +243,7 @@ function formatDuration(start: string, end?: string): string {
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   return `${(ms / 60000).toFixed(1)}m`;
 }
+
 function formatMessageTimestamp(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();

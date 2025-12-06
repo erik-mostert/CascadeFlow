@@ -179,32 +179,46 @@ interface MultiplierCardProps {
 }
 
 function MultiplierCard({ endpoint }: MultiplierCardProps) {
-    const ratioColor = endpoint.multiplierRatio >= 2
-        ? 'text-orange-400'
-        : endpoint.multiplierRatio >= 1
-            ? 'text-yellow-400'
-            : 'text-gray-400';
+  const eventRatioColor = endpoint.eventMultiplierRatio >= 2
+    ? 'text-orange-400'
+    : endpoint.eventMultiplierRatio >= 1
+      ? 'text-yellow-400'
+      : 'text-gray-400';
 
-    return (
-        <div className="bg-gray-800 rounded p-3">
-            <div className="flex items-center justify-between mb-2">
-                <span className="font-medium text-green-400">{endpoint.endpointName}</span>
-                <div className="flex items-center gap-2">
-                    <span className={`font-bold ${ratioColor}`}>
-                        {endpoint.multiplierRatio.toFixed(2)}x
-                    </span>
-                    <Tooltip content={`This endpoint publishes ${endpoint.multiplierRatio.toFixed(2)} messages for every message it receives. A ratio above 1.0 means the endpoint amplifies message volume.`} />
-                </div>
-            </div>
-            <div className="flex gap-4 text-sm text-gray-400">
-                <span>↓ {endpoint.totalReceived} received</span>
-                <span>↑ {endpoint.totalPublished} published</span>
-            </div>
-            {endpoint.commonOutputMessages.length > 0 && (
-                <div className="mt-2 text-xs text-gray-500">
-                    Publishes: {endpoint.commonOutputMessages.join(', ')}
-                </div>
-            )}
+  const totalRatioColor = endpoint.multiplierRatio >= 2
+    ? 'text-orange-400'
+    : endpoint.multiplierRatio >= 1
+      ? 'text-yellow-400'
+      : 'text-gray-400';
+
+  return (
+    <div className="bg-gray-800 rounded p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-medium text-green-400">{endpoint.endpointName}</span>
+        <div className="flex items-center gap-3">
+          {/* Event multiplier - the meaningful one */}
+          <div className="flex items-center gap-1">
+            <span className={`font-bold ${eventRatioColor}`}>
+              {endpoint.eventMultiplierRatio.toFixed(2)}x
+            </span>
+            <span className="text-xs text-gray-500">events</span>
+          </div>
+          <Tooltip content={`Total multiplier: ${endpoint.multiplierRatio.toFixed(2)}x (includes commands and replies). Event multiplier: ${endpoint.eventMultiplierRatio.toFixed(2)}x (events only - represents true fan-out).`} />
         </div>
-    );
+      </div>
+      
+      {/* Breakdown */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-400">
+        <span>↓ {endpoint.totalReceived} received</span>
+        <span className="text-blue-400">⚡ {endpoint.eventsPublished} events</span>
+        <span className="text-cyan-400">→ {endpoint.commandsSent} commands</span>
+      </div>
+      
+      {endpoint.commonOutputMessages.length > 0 && (
+        <div className="mt-2 text-xs text-gray-500">
+          Publishes: {endpoint.commonOutputMessages.join(', ')}
+        </div>
+      )}
+    </div>
+  );
 }

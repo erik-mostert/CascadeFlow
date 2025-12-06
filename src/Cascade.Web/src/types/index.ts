@@ -1,6 +1,7 @@
 export type MessageDirection = 0 | 1;
 
 export type FlowStatus = 'InProgress' | 'Completed' | 'Failed' | 'TimedOut';
+export type MessageIntent = 'Unknown' | 'Send' | 'Publish' | 'Reply';
 
 export interface MessageTelemetry {
   id: string;
@@ -23,6 +24,7 @@ export interface MessageTelemetry {
   sagaId?: string;
   sagaType?: string;
   retryCount?: number;
+  intent?: number; // 0=Unknown, 1=Send, 2=Publish, 3=Reply
 }
 
 export interface MessageFlow {
@@ -96,7 +98,11 @@ export interface EndpointImpact {
   endpointName: string;
   messagesReceived: number;
   messagesPublished: number;
+  commandsSent: number;
+  eventsPublished: number;
+  repliesSent: number;
   multiplierRatio: number;
+  eventMultiplierRatio: number;
   processingTimeMs: number;
   hasFailures: boolean;
 }
@@ -104,8 +110,11 @@ export interface EndpointImpact {
 export interface MultiplierEndpoint {
   endpointName: string;
   multiplierRatio: number;
+  eventMultiplierRatio: number;
   totalReceived: number;
   totalPublished: number;
+  commandsSent: number;
+  eventsPublished: number;
   sampleSize: number;
   commonOutputMessages: string[];
 }
@@ -117,4 +126,46 @@ export interface SystemImpactSummary {
   averageDepth: number;
   topMultipliers: MultiplierEndpoint[];
   highImpactMessageTypes: string[];
+}
+
+// Dashboard Types
+export interface DashboardStats {
+  totalMessages: number;
+  messagesLast24h: number;
+  messagesLastHour: number;
+  totalFailures: number;
+  failuresLast24h: number;
+  failureRate: number;
+  activeFlows: number;
+  timestamp: string;
+}
+
+export interface MessagesOverTime {
+  timestamp: string;
+  hour: string;
+  count: number;
+  failures: number;
+}
+
+export interface TopEndpoint {
+  endpoint: string;
+  messageCount: number;
+  failures: number;
+  avgProcessingMs: number;
+}
+
+export interface SlowestHandler {
+  endpoint: string;
+  messageType: string;
+  avgProcessingMs: number;
+  maxProcessingMs: number;
+  count: number;
+}
+
+export interface FailureRateOverTime {
+  timestamp: string;
+  hour: string;
+  total: number;
+  failures: number;
+  failureRate: number;
 }

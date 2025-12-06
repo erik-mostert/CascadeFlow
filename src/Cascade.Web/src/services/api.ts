@@ -1,9 +1,14 @@
-import type { 
-  MessageFlow, 
-  SystemTopology, 
-  FlowImpactMetrics, 
-  SystemImpactSummary, 
-  MultiplierEndpoint 
+import type {
+  MessageFlow,
+  SystemTopology,
+  FlowImpactMetrics,
+  SystemImpactSummary,
+  MultiplierEndpoint,
+  DashboardStats,
+  MessagesOverTime,
+  TopEndpoint,
+  SlowestHandler,
+  FailureRateOverTime
 } from '../types';
 
 const API_BASE = 'http://localhost:5100/api';
@@ -125,5 +130,45 @@ export async function getMultiplierEndpoints(flowCount = 100): Promise<Multiplie
     throw new Error(`Multipliers fetch failed: ${response.statusText}`);
   }
   
+  return response.json();
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const response = await fetch(`${API_BASE}/dashboard/stats`);
+  if (!response.ok) {
+    throw new Error(`Dashboard stats fetch failed: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function getMessagesOverTime(hours = 24): Promise<MessagesOverTime[]> {
+  const response = await fetch(`${API_BASE}/dashboard/messages-over-time?hours=${hours}`);
+  if (!response.ok) {
+    throw new Error(`Messages over time fetch failed: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function getTopEndpoints(limit = 10): Promise<TopEndpoint[]> {
+  const response = await fetch(`${API_BASE}/dashboard/top-endpoints?limit=${limit}`);
+  if (!response.ok) {
+    throw new Error(`Top endpoints fetch failed: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function getSlowestHandlers(limit = 10): Promise<SlowestHandler[]> {
+  const response = await fetch(`${API_BASE}/dashboard/slowest-handlers?limit=${limit}`);
+  if (!response.ok) {
+    throw new Error(`Slowest handlers fetch failed: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function getFailureRateOverTime(hours = 24): Promise<FailureRateOverTime[]> {
+  const response = await fetch(`${API_BASE}/dashboard/failure-rate-over-time?hours=${hours}`);
+  if (!response.ok) {
+    throw new Error(`Failure rate fetch failed: ${response.statusText}`);
+  }
   return response.json();
 }

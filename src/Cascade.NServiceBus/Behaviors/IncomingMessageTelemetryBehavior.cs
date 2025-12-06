@@ -3,6 +3,7 @@ using NServiceBus.Pipeline;
 using Cascade.Core.Enums;
 using Cascade.Core.Models;
 using Cascade.NServiceBus.Dispatchers;
+using MessageIntent = Cascade.Core.Enums.MessageIntent;
 
 namespace Cascade.NServiceBus.Behaviors;
 
@@ -26,6 +27,18 @@ public class IncomingMessageTelemetryBehavior : Behavior<IIncomingPhysicalMessag
     var success = true;
     string? exceptionType = null;
     string? exceptionMessage = null;
+    // Get message intent
+    var intentHeader = context.MessageHeaders.TryGetValue("NServiceBus.MessageIntent", out var intentValue)
+        ? intentValue
+        : null;
+
+    var intent = intentHeader switch
+    {
+      "Send" => MessageIntent.Send,
+      "Publish" => MessageIntent.Publish,
+      "Reply" => MessageIntent.Reply,
+      _ => MessageIntent.Unknown
+    };
 
     try
     {
@@ -66,7 +79,8 @@ public class IncomingMessageTelemetryBehavior : Behavior<IIncomingPhysicalMessag
         RetryCount = int.TryParse(GetHeader(context, "NServiceBus.Retries"), out var r) ? r : null,
         Headers = _options.IncludeHeaders
               ? context.MessageHeaders.ToDictionary(h => h.Key, h => h.Value)
-              : null
+              : null,
+        Intent = intent
       };
 
       // Fire and forget - never slow down message processing

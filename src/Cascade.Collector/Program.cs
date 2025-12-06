@@ -178,6 +178,146 @@ app.MapGet("/api/impact/multipliers", async (
   return Results.Ok(multipliers);
 });
 
+// Dashboard statistics endpoints
+app.MapGet("/api/dashboard/stats", async (
+    IFlowAggregator flowAggregator,
+    CascadeDbContext db) =>
+{
+  var now = DateTimeOffset.UtcNow;
+  var last24h = now.AddHours(-24);
+  var lastHour = now.AddHours(-1);
+
+  var totalMessages = await db.Messages.CountAsync();
+  var messagesLast24h = await db.Messages.CountAsync(m => m.CreatedAt >= last24h);
+  var messagesLastHour = await db.Messages.CountAsync(m => m.CreatedAt >= lastHour);
+  var totalFailures = await db.Messages.CountAsync(m => m.Success == false);
+  var failuresLast24h = await db.Messages.CountAsync(m => m.Success == false && m.CreatedAt >= last24h);
+
+  var activeFlows = flowAggregator.GetActiveFlows().Count();
+
+  return Results.Ok(new
+  {
+    totalMessages,
+    messagesLast24h,
+    messagesLastHour,
+    totalFailures,
+    failuresLast24h,
+    failureRate = totalMessages > 0 ? (double)totalFailures / totalMessages * 100 : 0,
+    activeFlows,
+    timestamp = now
+  });
+});
+
+app.MapGet("/api/dashboard/messages-over-time", async (
+    CascadeDbContext db,
+    int? hours) =>
+{
+  var hoursToQuery = hours ?? 24;
+  var startTime = DateTimeOffset.UtcNow.AddHours(-hoursToQuery);
+
+  var messages = await db.Messages
+      .Where(m => m.CreatedAt >= startTime)
+      .ToListAsync();
+
+  var grouped = messages
+      .GroupBy(m => new { m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, m.CreatedAt.Hour })
+      .Select(g => new
+      {
+        timestamp = new DateTime(g.Key.Year, g.Key.Month, g.Key.Day, g.Key.Hour, 0, 0).ToString("yyyy-MM-dd HH:mm"),
+        hour = $"{g.Key.Hour:00}:00",
+        count = g.Count(),
+        failures = g.Count(m => m.Success == false)
+      })
+      .OrderBy(g => g.timestamp)
+      .ToList();
+
+  return Results.Ok(grouped);
+});
+
+app.MapGet("/api/dashboard/top-endpoints", async (
+    CascadeDbContext db,
+    int? limit) =>
+{
+  var take = limit ?? 10;
+  var last24h = DateTimeOffset.UtcNow.AddHours(-24);
+
+  var messages = await db.Messages
+      .Where(m => m.CreatedAt >= last24h)
+      .ToListAsync();
+
+  var endpoints = messages
+      .GroupBy(m => m.EndpointName)
+      .Select(g => new
+      {
+        endpoint = g.Key,
+        messageCount = g.Count(),
+        failures = g.Count(m => m.Success == false),
+        avgProcessingMs = g.Where(m => m.ProcessingDuration != null)
+              .Select(m => m.ProcessingDuration!.Value.TotalMilliseconds)
+              .DefaultIfEmpty(0)
+              .Average()
+      })
+      .OrderByDescending(e => e.messageCount)
+      .Take(take)
+      .ToList();
+
+  return Results.Ok(endpoints);
+});
+
+app.MapGet("/api/dashboard/slowest-handlers", async (
+    CascadeDbContext db,
+    int? limit) =>
+{
+  var take = limit ?? 10;
+  var last24h = DateTimeOffset.UtcNow.AddHours(-24);
+
+  var messages = await db.Messages
+      .Where(m => m.CreatedAt >= last24h && m.Direction == 0 && m.ProcessingDuration != null)
+      .ToListAsync();
+
+  var handlers = messages
+      .GroupBy(m => new { m.EndpointName, m.MessageTypeShort })
+      .Select(g => new
+      {
+        endpoint = g.Key.EndpointName,
+        messageType = g.Key.MessageTypeShort,
+        avgProcessingMs = g.Average(m => m.ProcessingDuration!.Value.TotalMilliseconds),
+        maxProcessingMs = g.Max(m => m.ProcessingDuration!.Value.TotalMilliseconds),
+        count = g.Count()
+      })
+      .OrderByDescending(h => h.avgProcessingMs)
+      .Take(take)
+      .ToList();
+
+  return Results.Ok(handlers);
+});
+
+app.MapGet("/api/dashboard/failure-rate-over-time", async (
+    CascadeDbContext db,
+    int? hours) =>
+{
+  var hoursToQuery = hours ?? 24;
+  var startTime = DateTimeOffset.UtcNow.AddHours(-hoursToQuery);
+
+  var messages = await db.Messages
+      .Where(m => m.CreatedAt >= startTime)
+      .ToListAsync();
+
+  var result = messages
+      .GroupBy(m => new { m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, m.CreatedAt.Hour })
+      .Select(g => new
+      {
+        timestamp = new DateTime(g.Key.Year, g.Key.Month, g.Key.Day, g.Key.Hour, 0, 0).ToString("yyyy-MM-dd HH:mm"),
+        hour = $"{g.Key.Hour:00}:00",
+        total = g.Count(),
+        failures = g.Count(m => m.Success == false),
+        failureRate = g.Count() > 0 ? (double)g.Count(m => m.Success == false) / g.Count() * 100 : 0
+      })
+      .OrderBy(g => g.timestamp)
+      .ToList();
+
+  return Results.Ok(result);
+});
 Console.WriteLine("Cascade Collector running at http://localhost:5100");
 Console.WriteLine("SignalR hub available at http://localhost:5100/hubs/flow");
 

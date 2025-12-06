@@ -2,6 +2,7 @@
 using Cascade.Core.Enums;
 using Cascade.Core.Models;
 using Cascade.NServiceBus.Dispatchers;
+using MessageIntent = Cascade.Core.Enums.MessageIntent;
 
 namespace Cascade.NServiceBus.Behaviors;
 
@@ -23,6 +24,19 @@ public class OutgoingMessageTelemetryBehavior : Behavior<IOutgoingPhysicalMessag
   {
     await next().ConfigureAwait(false);
 
+    // Get message intent
+    var intentHeader = context.Headers.TryGetValue("NServiceBus.MessageIntent", out var intentValue)
+        ? intentValue
+        : null;
+
+    var intent = intentHeader switch
+    {
+      "Send" => MessageIntent.Send,
+      "Publish" => MessageIntent.Publish,
+      "Reply" => MessageIntent.Reply,
+      _ => MessageIntent.Unknown
+    };
+
     var telemetry = new MessageTelemetry
     {
       Id = Guid.NewGuid().ToString(),
@@ -40,7 +54,8 @@ public class OutgoingMessageTelemetryBehavior : Behavior<IOutgoingPhysicalMessag
       OriginatingEndpoint = GetHeader(context, "NServiceBus.OriginatingEndpoint"),
       Headers = _options.IncludeHeaders
             ? context.Headers.ToDictionary(h => h.Key, h => h.Value)
-            : null
+            : null,
+      Intent = intent
     };
 
     // Fire and forget

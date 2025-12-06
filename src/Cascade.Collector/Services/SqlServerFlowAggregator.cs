@@ -189,7 +189,8 @@ public class SqlServerFlowAggregator : IFlowAggregator
         SagaId = telemetry.SagaId,
         SagaType = telemetry.SagaType,
         RetryCount = telemetry.RetryCount,
-        CreatedAt = DateTimeOffset.UtcNow
+        CreatedAt = DateTimeOffset.UtcNow,
+        Intent = (int)telemetry.Intent
       };
 
       db.Messages.Add(entity);
@@ -223,7 +224,8 @@ public class SqlServerFlowAggregator : IFlowAggregator
       OriginatingEndpoint = msg.OriginatingEndpoint,
       SagaId = msg.SagaId,
       SagaType = msg.SagaType,
-      RetryCount = msg.RetryCount
+      RetryCount = msg.RetryCount,
+      Intent = (MessageIntent)msg.Intent
     };
   }
 }

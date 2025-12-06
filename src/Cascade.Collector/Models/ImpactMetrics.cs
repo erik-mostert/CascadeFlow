@@ -29,7 +29,11 @@ public class EndpointImpact
   public required string EndpointName { get; set; }
   public int MessagesReceived { get; set; }
   public int MessagesPublished { get; set; }
-  public double MultiplierRatio { get; set; } // Published / Received
+  public int CommandsSent { get; set; }
+  public int EventsPublished { get; set; }
+  public int RepliesSent { get; set; }
+  public double MultiplierRatio { get; set; }
+  public double EventMultiplierRatio { get; set; }
   public double ProcessingTimeMs { get; set; }
   public bool HasFailures { get; set; }
 }
@@ -38,10 +42,13 @@ public class MultiplierEndpoint
 {
   public required string EndpointName { get; set; }
   public double MultiplierRatio { get; set; }
+  public double EventMultiplierRatio { get; set; }
   public int TotalReceived { get; set; }
   public int TotalPublished { get; set; }
-  public int SampleSize { get; set; } // Number of flows analyzed
-  public List<string> CommonOutputMessages { get; set; } = [];
+  public int CommandsSent { get; set; }
+  public int EventsPublished { get; set; }
+  public int SampleSize { get; set; }
+  public List<string> CommonOutputMessages { get; set; } = new();
 }
 
 public class SystemImpactSummary

@@ -7,8 +7,9 @@ import { ImpactView } from './components/ImpactView';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getFlowById } from './services/api';
 import type { MessageFlow } from './types';
+import { DashboardView } from './components/DashboardView';
 
-type ViewMode = 'flows' | 'topology' | 'impact';
+type ViewMode = 'flows' | 'topology' | 'impact' | 'dashboard';
 
 function App() {
   const { connectionStatus, flows, topology, clearFlows } = useFlowHub();
@@ -113,6 +114,15 @@ function App() {
             >
               Impact
             </button>
+            <button
+              onClick={() => setViewMode('dashboard')}
+              className={`px-4 py-2 rounded transition-colors ${viewMode === 'dashboard'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+            >
+              Dashboard
+            </button>
           </div>
 
           <div className="flex items-center gap-4">
@@ -161,7 +171,6 @@ function App() {
           <span className="text-white font-medium">{topology?.totalMessagesObserved ?? 0}</span>
         </div>
       </div>
-
       {/* Main Content */}
       <main className="flex-1 p-4 overflow-hidden min-h-0">
         {viewMode === 'flows' ? (
@@ -189,9 +198,13 @@ function App() {
           <div className="h-full">
             <TopologyView topology={topology} />
           </div>
-        ) : (
+        ) : viewMode === 'impact' ? (
           <div className="h-full">
             <ImpactView />
+          </div>
+        ) : (
+          <div className="h-full">
+            <DashboardView />
           </div>
         )}
       </main>

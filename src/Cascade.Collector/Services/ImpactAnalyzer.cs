@@ -1,4 +1,5 @@
 ﻿using Cascade.Collector.Models;
+using Cascade.Core.Enums;
 using Cascade.Core.Models;
 
 namespace Cascade.Collector.Services;
@@ -81,32 +82,36 @@ public class ImpactAnalyzer : IImpactAnalyzer
     }
 
     // Aggregate endpoint stats across all flows
-    var endpointStats = new Dictionary<string, (int received, int published, HashSet<string> outputTypes)>();
+    var endpointStats = new Dictionary<string, (int received, int published, int commands, int events, HashSet<string> outputTypes)>();
 
     foreach (var flow in flows)
     {
-      var published = flow.Messages.Where(m => m.Direction == Core.Enums.MessageDirection.Outgoing).ToList();
-      var handled = flow.Messages.Where(m => m.Direction == Core.Enums.MessageDirection.Incoming).ToList();
+      var published = flow.Messages.Where(m => m.Direction == MessageDirection.Outgoing).ToList();
+      var handled = flow.Messages.Where(m => m.Direction == MessageDirection.Incoming).ToList();
 
       foreach (var msg in handled)
       {
         if (!endpointStats.ContainsKey(msg.EndpointName))
         {
-          endpointStats[msg.EndpointName] = (0, 0, new HashSet<string>());
+          endpointStats[msg.EndpointName] = (0, 0, 0, 0, new HashSet<string>());
         }
         var stats = endpointStats[msg.EndpointName];
-        endpointStats[msg.EndpointName] = (stats.received + 1, stats.published, stats.outputTypes);
+        endpointStats[msg.EndpointName] = (stats.received + 1, stats.published, stats.commands, stats.events, stats.outputTypes);
       }
 
       foreach (var msg in published)
       {
         if (!endpointStats.ContainsKey(msg.EndpointName))
         {
-          endpointStats[msg.EndpointName] = (0, 0, new HashSet<string>());
+          endpointStats[msg.EndpointName] = (0, 0, 0, 0, new HashSet<string>());
         }
         var stats = endpointStats[msg.EndpointName];
+
+        var commands = stats.commands + (msg.Intent == MessageIntent.Send ? 1 : 0);
+        var events = stats.events + (msg.Intent == MessageIntent.Publish ? 1 : 0);
+
         stats.outputTypes.Add(msg.MessageTypeShort);
-        endpointStats[msg.EndpointName] = (stats.received, stats.published + 1, stats.outputTypes);
+        endpointStats[msg.EndpointName] = (stats.received, stats.published + 1, commands, events, stats.outputTypes);
       }
     }
 
@@ -118,11 +123,14 @@ public class ImpactAnalyzer : IImpactAnalyzer
           EndpointName = kvp.Key,
           TotalReceived = kvp.Value.received,
           TotalPublished = kvp.Value.published,
+          CommandsSent = kvp.Value.commands,
+          EventsPublished = kvp.Value.events,
           MultiplierRatio = (double)kvp.Value.published / kvp.Value.received,
+          EventMultiplierRatio = (double)kvp.Value.events / kvp.Value.received,
           SampleSize = flows.Count,
           CommonOutputMessages = kvp.Value.outputTypes.Take(5).ToList()
         })
-        .OrderByDescending(m => m.MultiplierRatio)
+        .OrderByDescending(m => m.EventMultiplierRatio)
         .ToList();
 
     return multipliers;
@@ -219,30 +227,36 @@ public class ImpactAnalyzer : IImpactAnalyzer
     return Math.Max(node.Depth, node.Children.Max(CalculateNodeDepth));
   }
 
-  private List<EndpointImpact> CalculateEndpointBreakdown(ICollection<MessageTelemetry> messages)
+  private static List<EndpointImpact> CalculateEndpointBreakdown(ICollection<MessageTelemetry> messages)
   {
     var endpoints = messages
         .GroupBy(m => m.EndpointName)
-        .Select(g => new EndpointImpact
-        {
-          EndpointName = g.Key,
-          MessagesReceived = g.Count(m => m.Direction == Core.Enums.MessageDirection.Incoming),
-          MessagesPublished = g.Count(m => m.Direction == Core.Enums.MessageDirection.Outgoing),
-          ProcessingTimeMs = g
-                .Where(m => m.ProcessingDuration.HasValue)
-                .Sum(m => m.ProcessingDuration!.Value.TotalMilliseconds),
-          HasFailures = g.Any(m => m.Success == false)
+        .Select(g => {
+          var received = g.Count(m => m.Direction == MessageDirection.Incoming);
+          var published = g.Count(m => m.Direction == MessageDirection.Outgoing);
+          var commandsSent = g.Count(m => m.Direction == MessageDirection.Outgoing && m.Intent == MessageIntent.Send);
+          var eventsPublished = g.Count(m => m.Direction == MessageDirection.Outgoing && m.Intent == MessageIntent.Publish);
+          var repliesSent = g.Count(m => m.Direction == MessageDirection.Outgoing && m.Intent == MessageIntent.Reply);
+
+          return new EndpointImpact
+          {
+            EndpointName = g.Key,
+            MessagesReceived = received,
+            MessagesPublished = published,
+            CommandsSent = commandsSent,
+            EventsPublished = eventsPublished,
+            RepliesSent = repliesSent,
+            MultiplierRatio = received > 0 ? (double)published / received : 0,
+            EventMultiplierRatio = received > 0 ? (double)eventsPublished / received : 0,
+            ProcessingTimeMs = g
+                  .Where(m => m.ProcessingDuration.HasValue)
+                  .Sum(m => m.ProcessingDuration!.Value.TotalMilliseconds),
+            HasFailures = g.Any(m => m.Success == false)
+          };
         })
         .ToList();
 
-    foreach (var endpoint in endpoints)
-    {
-      endpoint.MultiplierRatio = endpoint.MessagesReceived > 0
-          ? (double)endpoint.MessagesPublished / endpoint.MessagesReceived
-          : 0;
-    }
-
-    return endpoints.OrderByDescending(e => e.MultiplierRatio).ToList();
+    return endpoints.OrderByDescending(e => e.EventMultiplierRatio).ToList();
   }
 
   private List<string> GetHighImpactMessageTypes(List<MessageFlow> flows)
@@ -263,7 +277,7 @@ public class ImpactAnalyzer : IImpactAnalyzer
         .ToList();
   }
 
-  private void CountMessageTypeImpact(List<MessageImpact> nodes, Dictionary<string, int> impact)
+  private static void CountMessageTypeImpact(List<MessageImpact> nodes, Dictionary<string, int> impact)
   {
     foreach (var node in nodes)
     {

@@ -121,4 +121,9 @@ public record MessageTelemetry
   /// Gets the retry attempt number for the message, if applicable.
   /// </summary>
   public int? RetryCount { get; init; }
+
+  /// <summary>
+  /// The intent of the message (Send, Publish, Reply)
+  /// </summary>
+  public MessageIntent Intent { get; set; } = MessageIntent.Unknown;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import cytoscape, { type Core } from "cytoscape";
 import dagre from "cytoscape-dagre";
 import type { MessageFlow } from "../types";
@@ -11,150 +11,170 @@ interface FlowGraphProps {
     expanded?: boolean;
 }
 
-export function FlowGraph({ flow, expanded = false }: FlowGraphProps) {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const cyRef = useRef<Core | null>(null);
-
-    useEffect(() => {
-        if (!containerRef.current) return;
-
-        const elements = buildGraphElements(flow);
-
-        const cy = cytoscape({
-            container: containerRef.current,
-            elements,
-            style: [
-                // Base node styles
-                {
-                    selector: "node",
-                    style: {
-                        "label": "data(label)",
-                        "text-valign": "center",
-                        "text-halign": "center",
-                        "color": "#e2e8f0",
-                        "font-size": "10px",
-                        "font-weight": "normal",
-                        "text-wrap": "wrap",
-                        "text-max-width": "100px",
-                        "width": "label",
-                        "height": "label",
-                        "padding": "14px",
-                        "shape": "round-rectangle",
-                        "background-color": "#334155",
-                        "border-width": 1,
-                        "border-color": "#475569",
-                    },
-                },
-                // Endpoint nodes - Service style
-                {
-                    selector: 'node[type="endpoint"]',
-                    style: {
-                        "background-color": "#0f172a",
-                        "border-color": "#38bdf8",
-                        "border-width": 2,
-                        "font-weight": "bold",
-                        "font-size": "11px",
-                        "color": "#f0f9ff",
-                        "shape": "rectangle",
-                        "padding": "18px",
-                    },
-                },
-                // Message nodes - Event/Command style
-                {
-                    selector: 'node[type="message"]',
-                    style: {
-                        "background-color": "#1e293b",
-                        "border-color": "#64748b",
-                        "border-width": 1,
-                        "font-size": "9px",
-                        "color": "#cbd5e1",
-                        "shape": "rectangle",
-                        "padding": "10px",
-                    },
-                },
-                // Failed nodes
-                {
-                    selector: 'node[failed="true"]',
-                    style: {
-                        "background-color": "#7f1d1d",
-                        "border-color": "#f87171",
-                        "border-width": 2,
-                        "color": "#fecaca",
-                    },
-                },
-                // Slow nodes
-                {
-                    selector: 'node[slow="true"]',
-                    style: {
-                        "border-color": "#fbbf24",
-                        "border-width": 2,
-                    },
-                },
-                // Base edge styles - Orthogonal connectors
-                {
-                    selector: "edge",
-                    style: {
-                        "width": 2,
-                        "line-color": "#475569",
-                        "target-arrow-color": "#475569",
-                        "target-arrow-shape": "triangle",
-                        "arrow-scale": 1,
-                        "curve-style": "straight",
-                        "taxi-direction": "rightward",
-                        "taxi-turn": "50px",
-                    },
-                },
-                // Published edges - Blue
-                {
-                    selector: 'edge[edgeType="published"]',
-                    style: {
-                        "line-color": "#0ea5e9",
-                        "target-arrow-color": "#0ea5e9",
-                        "width": 2,
-                    },
-                },
-                // Handled edges - Green
-                {
-                    selector: 'edge[edgeType="handled"]',
-                    style: {
-                        "line-color": "#10b981",
-                        "target-arrow-color": "#10b981",
-                        "width": 2,
-                    },
-                },
-            ],
-            layout: {
-                name: "dagre",
-                rankDir: "LR",
-                nodeSep: expanded ? 100 : 70,
-                rankSep: expanded ? 150 : 100,
-                padding: 40,
-            } as cytoscape.LayoutOptions,
-            userZoomingEnabled: true,
-            userPanningEnabled: true,
-            boxSelectionEnabled: false,
-            minZoom: 0.3,
-            maxZoom: 2.5,
-        });
-
-        cyRef.current = cy;
-
-        // Fit to container
-        cy.fit(undefined, 30);
-
-        return () => {
-            cy.destroy();
-        };
-    }, [flow, expanded]);
-
-    return (
-        <div
-            ref={containerRef}
-            className={`w-full bg-gray-900 rounded overflow-hidden ${expanded ? "h-[70vh]" : "min-h-[200px] max-h-[200px]"
-                }`}
-        />
-    );
+export interface FlowGraphRef {
+    exportPng: () => string | null;
 }
+
+export const FlowGraph = forwardRef<FlowGraphRef, FlowGraphProps>(
+    function FlowGraph({ flow, expanded = false }, ref) {
+        const containerRef = useRef<HTMLDivElement>(null);
+        const cyRef = useRef<Core | null>(null);
+
+        useImperativeHandle(ref, () => ({
+            exportPng: () => {
+                if (cyRef.current) {
+                    return cyRef.current.png({
+                        output: 'base64uri',
+                        bg: '#111827',
+                        scale: 2,
+                        full: true
+                    });
+                }
+                return null;
+            }
+        }));
+
+        useEffect(() => {
+            if (!containerRef.current) return;
+
+            const elements = buildGraphElements(flow);
+
+            const cy = cytoscape({
+                container: containerRef.current,
+                elements,
+                style: [
+                    // Base node styles
+                    {
+                        selector: "node",
+                        style: {
+                            "label": "data(label)",
+                            "text-valign": "center",
+                            "text-halign": "center",
+                            "color": "#e2e8f0",
+                            "font-size": "10px",
+                            "font-weight": "normal",
+                            "text-wrap": "wrap",
+                            "text-max-width": "100px",
+                            "width": "label",
+                            "height": "label",
+                            "padding": "14px",
+                            "shape": "round-rectangle",
+                            "background-color": "#334155",
+                            "border-width": 1,
+                            "border-color": "#475569",
+                        },
+                    },
+                    // Endpoint nodes - Service style
+                    {
+                        selector: 'node[type="endpoint"]',
+                        style: {
+                            "background-color": "#0f172a",
+                            "border-color": "#38bdf8",
+                            "border-width": 2,
+                            "font-weight": "bold",
+                            "font-size": "11px",
+                            "color": "#f0f9ff",
+                            "shape": "rectangle",
+                            "padding": "18px",
+                        },
+                    },
+                    // Message nodes - Event/Command style
+                    {
+                        selector: 'node[type="message"]',
+                        style: {
+                            "background-color": "#1e293b",
+                            "border-color": "#64748b",
+                            "border-width": 1,
+                            "font-size": "9px",
+                            "color": "#cbd5e1",
+                            "shape": "rectangle",
+                            "padding": "10px",
+                        },
+                    },
+                    // Failed nodes
+                    {
+                        selector: 'node[failed="true"]',
+                        style: {
+                            "background-color": "#7f1d1d",
+                            "border-color": "#f87171",
+                            "border-width": 2,
+                            "color": "#fecaca",
+                        },
+                    },
+                    // Slow nodes
+                    {
+                        selector: 'node[slow="true"]',
+                        style: {
+                            "border-color": "#fbbf24",
+                            "border-width": 2,
+                        },
+                    },
+                    // Base edge styles - Orthogonal connectors
+                    {
+                        selector: "edge",
+                        style: {
+                            "width": 2,
+                            "line-color": "#475569",
+                            "target-arrow-color": "#475569",
+                            "target-arrow-shape": "triangle",
+                            "arrow-scale": 1,
+                            "curve-style": "straight",
+                            "taxi-direction": "rightward",
+                            "taxi-turn": "50px",
+                        },
+                    },
+                    // Published edges - Blue
+                    {
+                        selector: 'edge[edgeType="published"]',
+                        style: {
+                            "line-color": "#0ea5e9",
+                            "target-arrow-color": "#0ea5e9",
+                            "width": 2,
+                        },
+                    },
+                    // Handled edges - Green
+                    {
+                        selector: 'edge[edgeType="handled"]',
+                        style: {
+                            "line-color": "#10b981",
+                            "target-arrow-color": "#10b981",
+                            "width": 2,
+                        },
+                    },
+                ],
+                layout: {
+                    name: "dagre",
+                    rankDir: "LR",
+                    nodeSep: expanded ? 100 : 70,
+                    rankSep: expanded ? 150 : 100,
+                    padding: 40,
+                } as cytoscape.LayoutOptions,
+                userZoomingEnabled: true,
+                userPanningEnabled: true,
+                boxSelectionEnabled: false,
+                minZoom: 0.3,
+                maxZoom: 2.5,
+            });
+
+            cyRef.current = cy;
+
+            // Fit to container
+            cy.fit(undefined, 30);
+
+            return () => {
+                cy.destroy();
+            };
+        }, [flow, expanded]);
+
+        return (
+            <div
+                ref={containerRef}
+                className={`w-full bg-gray-900 rounded overflow-hidden ${expanded ? "h-[70vh]" : "min-h-[200px] max-h-[200px]"
+                    }`}
+            />
+        );
+    }
+);
 
 interface GraphNode {
     data: {
@@ -212,7 +232,6 @@ function buildGraphElements(flow: MessageFlow): (GraphNode | GraphEdge)[] {
         }
     };
 
-    // Helper to build label with retry count
     // Helper to build label with retry count and duration
     const buildHandlerLabel = (
         endpointName: string,
