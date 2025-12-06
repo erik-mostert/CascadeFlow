@@ -1,4 +1,10 @@
-import type { MessageFlow, SystemTopology } from '../types';
+import type { 
+  MessageFlow, 
+  SystemTopology, 
+  FlowImpactMetrics, 
+  SystemImpactSummary, 
+  MultiplierEndpoint 
+} from '../types';
 
 const API_BASE = 'http://localhost:5100/api';
 
@@ -84,6 +90,39 @@ export async function getTopology(): Promise<SystemTopology> {
   
   if (!response.ok) {
     throw new Error(`Topology fetch failed: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+export async function getFlowImpact(correlationId: string): Promise<FlowImpactMetrics | null> {
+  const response = await fetch(`${API_BASE}/impact/${correlationId}`);
+  
+  if (response.status === 404) {
+    return null;
+  }
+  
+  if (!response.ok) {
+    throw new Error(`Impact fetch failed: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export async function getImpactSummary(flowCount = 100): Promise<SystemImpactSummary> {
+  const response = await fetch(`${API_BASE}/impact/summary?flowCount=${flowCount}`);
+  
+  if (!response.ok) {
+    throw new Error(`Impact summary fetch failed: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export async function getMultiplierEndpoints(flowCount = 100): Promise<MultiplierEndpoint[]> {
+  const response = await fetch(`${API_BASE}/impact/multipliers?flowCount=${flowCount}`);
+  
+  if (!response.ok) {
+    throw new Error(`Multipliers fetch failed: ${response.statusText}`);
   }
   
   return response.json();

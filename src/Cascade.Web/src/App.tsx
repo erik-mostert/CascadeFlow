@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useFlowHub } from './hooks/useFlowHub';
 import { FlowList } from './components/FlowList';
 import { FlowDetail } from './components/FlowDetail';
 import { TopologyView } from './components/TopologyView';
+import { ImpactView } from './components/ImpactView';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { getFlowById } from './services/api';
 import type { MessageFlow } from './types';
 
-type ViewMode = 'flows' | 'topology';
+type ViewMode = 'flows' | 'topology' | 'impact';
 
 function App() {
   const { connectionStatus, flows, topology, clearFlows } = useFlowHub();
@@ -21,7 +22,7 @@ function App() {
   const effectiveSelectedId = selectedFlowId ?? (flows.length > 0 ? flows[0].correlationId : null);
 
   // Find flow in memory
-  const memoryFlow = useMemo(() => 
+  const memoryFlow = useMemo(() =>
     flows.find(f => f.correlationId === effectiveSelectedId) ?? null,
     [flows, effectiveSelectedId]
   );
@@ -31,40 +32,40 @@ function App() {
 
   // Fetch from API only when needed
   useEffect(() => {
-  if (!needsFetch || !effectiveSelectedId) {
-    return;
-  }
+    if (!needsFetch || !effectiveSelectedId) {
+      return;
+    }
 
-  let cancelled = false;
-  setIsLoadingFlow(true);
-  
-  const flowIdToFetch = effectiveSelectedId;
-  
-  getFlowById(flowIdToFetch)
-    .then(flow => {
-      if (!cancelled) {
-        setFetchedFlow(flow);
-        setFetchedFlowId(flowIdToFetch);
-        setIsLoadingFlow(false);
-      }
-    })
-    .catch(err => {
-      console.error('Failed to fetch flow:', err);
-      if (!cancelled) {
-        setFetchedFlow(null);
-        setFetchedFlowId(flowIdToFetch);
-        setIsLoadingFlow(false);
-      }
-    });
+    let cancelled = false;
+    setIsLoadingFlow(true);
 
-  return () => {
-    cancelled = true;
-  };
-}, [needsFetch, effectiveSelectedId]);
+    const flowIdToFetch = effectiveSelectedId;
+
+    getFlowById(flowIdToFetch)
+      .then(flow => {
+        if (!cancelled) {
+          setFetchedFlow(flow);
+          setFetchedFlowId(flowIdToFetch);
+          setIsLoadingFlow(false);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch flow:', err);
+        if (!cancelled) {
+          setFetchedFlow(null);
+          setFetchedFlowId(flowIdToFetch);
+          setIsLoadingFlow(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [needsFetch, effectiveSelectedId]);
 
   // Use memory flow if available, otherwise use fetched flow (if it matches current selection)
   const selectedFlow = memoryFlow ?? (fetchedFlowId === effectiveSelectedId ? fetchedFlow : null);
-  
+
   // Show loading if we need to fetch or are currently fetching
   const showLoading = isLoadingFlow || (needsFetch && !selectedFlow);
 
@@ -88,8 +89,8 @@ function App() {
             <button
               onClick={() => setViewMode('flows')}
               className={`px-4 py-2 rounded transition-colors ${viewMode === 'flows'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
             >
               Flows
@@ -97,11 +98,20 @@ function App() {
             <button
               onClick={() => setViewMode('topology')}
               className={`px-4 py-2 rounded transition-colors ${viewMode === 'topology'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
             >
               Topology
+            </button>
+            <button
+              onClick={() => setViewMode('impact')}
+              className={`px-4 py-2 rounded transition-colors ${viewMode === 'impact'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+            >
+              Impact
             </button>
           </div>
 
@@ -122,9 +132,9 @@ function App() {
             {/* Connection status */}
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' :
-                  connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
-                    connectionStatus === 'error' ? 'bg-red-500' :
-                      'bg-gray-500'
+                connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                  connectionStatus === 'error' ? 'bg-red-500' :
+                    'bg-gray-500'
                 }`}></span>
               <span className="text-sm text-gray-400 capitalize">{connectionStatus}</span>
             </div>
@@ -163,7 +173,6 @@ function App() {
                 selectedFlowId={effectiveSelectedId}
                 onSelectFlow={setSelectedFlowId}
                 onFlowsLoaded={(loadedFlows) => {
-                  // Auto-select first result if current selection not in results
                   if (loadedFlows.length > 0 && !loadedFlows.find(f => f.correlationId === effectiveSelectedId)) {
                     setSelectedFlowId(loadedFlows[0].correlationId);
                   }
@@ -176,9 +185,13 @@ function App() {
               <FlowDetail flow={selectedFlow} isLoading={showLoading} />
             </div>
           </div>
-        ) : (
+        ) : viewMode === 'topology' ? (
           <div className="h-full">
             <TopologyView topology={topology} />
+          </div>
+        ) : (
+          <div className="h-full">
+            <ImpactView />
           </div>
         )}
       </main>

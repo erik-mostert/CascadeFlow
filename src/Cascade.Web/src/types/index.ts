@@ -69,3 +69,52 @@ export interface SystemTopology {
   endpointCount: number;
   connectionCount: number;
 }
+// Impact Analysis Types
+export interface FlowImpactMetrics {
+  correlationId: string;
+  totalMessages: number;
+  totalEndpoints: number;
+  maxDepth: number;
+  totalProcessingTimeMs: number;
+  hasFailures: boolean;
+  messageTree: MessageImpact[];
+  endpointBreakdown: EndpointImpact[];
+}
+
+export interface MessageImpact {
+  messageId: string;
+  messageType: string;
+  publishedBy: string;
+  depth: number;
+  downstreamMessageCount: number;
+  downstreamEndpointCount: number;
+  handledBy: string[];
+  children: MessageImpact[];
+}
+
+export interface EndpointImpact {
+  endpointName: string;
+  messagesReceived: number;
+  messagesPublished: number;
+  multiplierRatio: number;
+  processingTimeMs: number;
+  hasFailures: boolean;
+}
+
+export interface MultiplierEndpoint {
+  endpointName: string;
+  multiplierRatio: number;
+  totalReceived: number;
+  totalPublished: number;
+  sampleSize: number;
+  commonOutputMessages: string[];
+}
+
+export interface SystemImpactSummary {
+  totalFlowsAnalyzed: number;
+  averageMessagesPerFlow: number;
+  averageEndpointsPerFlow: number;
+  averageDepth: number;
+  topMultipliers: MultiplierEndpoint[];
+  highImpactMessageTypes: string[];
+}
