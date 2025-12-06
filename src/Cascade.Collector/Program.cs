@@ -18,6 +18,7 @@ builder.Services.AddDbContext<CascadeDbContext>(options =>
 // Register services
 builder.Services.AddSingleton<IFlowAggregator, SqlServerFlowAggregator>();
 builder.Services.AddSingleton<ITopologyAggregator, SqlServerTopologyAggregator>();
+builder.Services.AddScoped<IImpactAnalyzer, ImpactAnalyzer>();
 builder.Services.AddSignalR();
 
 // Configure CORS for frontend development
@@ -141,6 +142,40 @@ app.MapGet("/api/stats", async (
     FailedFlows = activeFlows.Count(f => f.HasFailures),
     LastUpdated = topology.LastUpdated
   });
+});
+
+// Impact analysis endpoints
+app.MapGet("/api/impact/{correlationId}", async (
+    string correlationId,
+    IFlowAggregator flowAggregator,
+    IImpactAnalyzer impactAnalyzer) =>
+{
+  var flow = flowAggregator.GetFlow(correlationId)
+      ?? await flowAggregator.GetFlowFromDatabaseAsync(correlationId);
+
+  if (flow is null)
+  {
+    return Results.NotFound();
+  }
+
+  var metrics = impactAnalyzer.AnalyzeFlow(flow);
+  return Results.Ok(metrics);
+});
+
+app.MapGet("/api/impact/summary", async (
+    IImpactAnalyzer impactAnalyzer,
+    int? flowCount) =>
+{
+  var summary = await impactAnalyzer.GetSystemImpactSummaryAsync(flowCount ?? 100);
+  return Results.Ok(summary);
+});
+
+app.MapGet("/api/impact/multipliers", async (
+    IImpactAnalyzer impactAnalyzer,
+    int? flowCount) =>
+{
+  var multipliers = await impactAnalyzer.GetMultiplierEndpointsAsync(flowCount ?? 100);
+  return Results.Ok(multipliers);
 });
 
 Console.WriteLine("Cascade Collector running at http://localhost:5100");

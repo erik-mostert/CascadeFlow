@@ -24,105 +24,117 @@ export function FlowGraph({ flow, expanded = false }: FlowGraphProps) {
             container: containerRef.current,
             elements,
             style: [
-                // Node styles
+                // Base node styles
                 {
                     selector: "node",
                     style: {
-                        label: "data(label)",
+                        "label": "data(label)",
                         "text-valign": "center",
                         "text-halign": "center",
-                        "background-color": "#374151",
-                        color: "#fff",
-                        "font-size": "12px",
+                        "color": "#e2e8f0",
+                        "font-size": "10px",
+                        "font-weight": "normal",
                         "text-wrap": "wrap",
                         "text-max-width": "100px",
-                        width: "label",
-                        height: "label",
-                        padding: "12px",
-                        shape: "roundrectangle",
-                        "border-width": 2,
-                        "border-color": "#4b5563",
+                        "width": "label",
+                        "height": "label",
+                        "padding": "14px",
+                        "shape": "round-rectangle",
+                        "background-color": "#334155",
+                        "border-width": 1,
+                        "border-color": "#475569",
                     },
                 },
-                // Endpoint nodes
+                // Endpoint nodes - Service style
                 {
                     selector: 'node[type="endpoint"]',
                     style: {
-                        "background-color": "#1e3a5f",
-                        "border-color": "#3b82f6",
+                        "background-color": "#0f172a",
+                        "border-color": "#38bdf8",
+                        "border-width": 2,
                         "font-weight": "bold",
+                        "font-size": "11px",
+                        "color": "#f0f9ff",
+                        "shape": "rectangle",
+                        "padding": "18px",
                     },
                 },
-                // Message nodes
+                // Message nodes - Event/Command style
                 {
                     selector: 'node[type="message"]',
                     style: {
-                        "background-color": "#374151",
-                        "border-color": "#6b7280",
-                        "font-size": "10px",
+                        "background-color": "#1e293b",
+                        "border-color": "#64748b",
+                        "border-width": 1,
+                        "font-size": "9px",
+                        "color": "#cbd5e1",
+                        "shape": "rectangle",
+                        "padding": "10px",
                     },
                 },
-                // Failed message nodes
+                // Failed nodes
                 {
                     selector: 'node[failed="true"]',
                     style: {
                         "background-color": "#7f1d1d",
-                        "border-color": "#ef4444",
+                        "border-color": "#f87171",
+                        "border-width": 2,
+                        "color": "#fecaca",
                     },
                 },
-                // Slow handler nodes (> 100ms)
+                // Slow nodes
                 {
                     selector: 'node[slow="true"]',
                     style: {
-                        "border-color": "#f59e0b",
-                        "border-width": 3,
+                        "border-color": "#fbbf24",
+                        "border-width": 2,
                     },
                 },
-                // Edge styles
+                // Base edge styles - Orthogonal connectors
                 {
                     selector: "edge",
                     style: {
-                        width: 2,
-                        "line-color": "#4b5563",
-                        "target-arrow-color": "#4b5563",
+                        "width": 2,
+                        "line-color": "#475569",
+                        "target-arrow-color": "#475569",
                         "target-arrow-shape": "triangle",
-                        "curve-style": "bezier",
-                        label: "data(label)",
-                        "font-size": "9px",
-                        color: "#9ca3af",
-                        "text-rotation": "autorotate",
-                        "text-margin-y": -10,
+                        "arrow-scale": 1,
+                        "curve-style": "straight",
+                        "taxi-direction": "rightward",
+                        "taxi-turn": "50px",
                     },
                 },
-                // Published edges (endpoint → message) - Blue
+                // Published edges - Blue
                 {
                     selector: 'edge[edgeType="published"]',
                     style: {
-                        "line-color": "#3b82f6",
-                        "target-arrow-color": "#3b82f6",
-                        width: 3,
+                        "line-color": "#0ea5e9",
+                        "target-arrow-color": "#0ea5e9",
+                        "width": 2,
                     },
                 },
-                // Handled edges (message → endpoint) - Green
+                // Handled edges - Green
                 {
                     selector: 'edge[edgeType="handled"]',
                     style: {
-                        "line-color": "#22c55e",
-                        "target-arrow-color": "#22c55e",
-                        width: 3,
+                        "line-color": "#10b981",
+                        "target-arrow-color": "#10b981",
+                        "width": 2,
                     },
                 },
             ],
             layout: {
                 name: "dagre",
-                rankDir: "LR", // Left to right
-                nodeSep: 60,
-                rankSep: 100,
-                padding: 30,
+                rankDir: "LR",
+                nodeSep: expanded ? 100 : 70,
+                rankSep: expanded ? 150 : 100,
+                padding: 40,
             } as cytoscape.LayoutOptions,
             userZoomingEnabled: true,
             userPanningEnabled: true,
             boxSelectionEnabled: false,
+            minZoom: 0.3,
+            maxZoom: 2.5,
         });
 
         cyRef.current = cy;
