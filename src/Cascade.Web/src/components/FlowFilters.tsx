@@ -19,7 +19,7 @@ export function FlowFilters({ onSearch, isLoading }: FlowFiltersProps) {
   const [hasFailures, setHasFailures] = useState<boolean | undefined>(undefined);
   const [timeRange, setTimeRange] = useState('1h');
 
-  const handleSearch = () => {
+ const handleSearch = () => {
     const now = new Date();
     let startTime: string | undefined;
     
@@ -34,7 +34,8 @@ export function FlowFilters({ onSearch, isLoading }: FlowFiltersProps) {
         startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
         break;
       case 'all':
-        startTime = undefined;
+        // Use a very old date to get all records
+        startTime = new Date('2000-01-01').toISOString();
         break;
     }
 
