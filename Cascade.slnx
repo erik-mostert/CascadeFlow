@@ -10,6 +10,7 @@
   <Folder Name="/Solution Items/">
     <File Path="nuget.config" />
     <File Path="pack-local.ps1" />
+    <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Cascade.Collector/Cascade.Collector.csproj" />
