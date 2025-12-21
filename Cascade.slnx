@@ -22,5 +22,7 @@
     <Project Path="src/Cascade.NServiceBus/Cascade.NServiceBus.csproj" />
     <Project Path="src/Cascade.Tool/Cascade.Tool.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Cascade.Collector.Tests/Cascade.Collector.Tests.csproj" Id="ce34cd8f-55d2-4a61-bba9-8765c9024e67" />
+  </Folder>
 </Solution>
