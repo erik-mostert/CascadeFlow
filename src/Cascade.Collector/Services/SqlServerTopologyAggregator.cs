@@ -90,12 +90,18 @@ public class SqlServerTopologyAggregator : ITopologyAggregator
                 });
             }
 
-            _logger.LogInformation("Loaded {EndpointCount} endpoints and {ConnectionCount} connections from database",
-                endpoints.Count, connections.Count);
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Loaded {EndpointCount} endpoints and {ConnectionCount} connections from database",
+                    endpoints.Count, connections.Count);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load topology from database");
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Failed to load topology from database");
+            }
         }
     }
 
@@ -132,6 +138,7 @@ public class SqlServerTopologyAggregator : ITopologyAggregator
                     endpoint.TotalProcessingTimeMs += telemetry.ProcessingDuration.Value.TotalMilliseconds;
                     endpoint.ProcessingTimeCount++;
                 }
+
                 if (telemetry.Success == false)
                 {
                     endpoint.Failures++;
@@ -159,7 +166,7 @@ public class SqlServerTopologyAggregator : ITopologyAggregator
                         SourceEndpoint = telemetry.OriginatingEndpoint,
                         TargetEndpoint = telemetry.EndpointName,
                         MessageType = telemetry.MessageType,
-                        MessageTypeShort = telemetry.MessageTypeShort,
+                        MessageTypeShort = telemetry.MessageTypeShort ?? "UNKNOWN",
                         MessageCount = 0,
                         FailureCount = 0,
                         FirstSeen = telemetry.Timestamp,
@@ -181,7 +188,10 @@ public class SqlServerTopologyAggregator : ITopologyAggregator
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to persist topology for {Endpoint}", telemetry.EndpointName);
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Failed to persist topology for {Endpoint}", telemetry.EndpointName);
+            }
         }
     }
 
@@ -195,11 +205,17 @@ public class SqlServerTopologyAggregator : ITopologyAggregator
             await db.Endpoints.ExecuteDeleteAsync();
             await db.Connections.ExecuteDeleteAsync();
 
-            _logger.LogInformation("Cleared topology from database");
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("Cleared topology from database");
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to clear topology from database");
+            if (_logger.IsEnabled(LogLevel.Error))
+            {
+                _logger.LogError(ex, "Failed to clear topology from database");
+            }
         }
     }
 }

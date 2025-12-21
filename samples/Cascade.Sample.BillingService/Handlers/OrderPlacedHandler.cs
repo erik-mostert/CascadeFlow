@@ -1,18 +1,12 @@
 ﻿using Cascade.Sample.Contracts.Events;
 using Microsoft.Extensions.Logging;
-using NServiceBus;
 
 namespace Cascade.Sample.Billing.Handlers;
 
-public class OrderPlacedHandler : IHandleMessages<OrderPlaced>
+public class OrderPlacedHandler(ILogger<OrderPlacedHandler> logger) : IHandleMessages<OrderPlaced>
 {
-  private readonly ILogger<OrderPlacedHandler> _logger;
+  private readonly ILogger<OrderPlacedHandler> _logger = logger;
   private static int _messageCount = 0;
-
-  public OrderPlacedHandler(ILogger<OrderPlacedHandler> logger)
-  {
-    _logger = logger;
-  }
 
   public async Task Handle(OrderPlaced message, IMessageHandlerContext context)
   {
@@ -22,7 +16,7 @@ public class OrderPlacedHandler : IHandleMessages<OrderPlaced>
         message.OrderId, message.Amount);
 
     // Simulate payment processing
-    await Task.Delay(100);
+    await Task.Delay(100, context.CancellationToken);
 
     // Fail every 3rd message to demonstrate error handling
     if (_messageCount % 3 == 0)

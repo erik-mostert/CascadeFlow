@@ -11,16 +11,10 @@ public interface IImpactAnalyzer
   Task<List<MultiplierEndpoint>> GetMultiplierEndpointsAsync(int flowCount = 100);
 }
 
-public class ImpactAnalyzer : IImpactAnalyzer
+public class ImpactAnalyzer(IFlowAggregator flowAggregator, ILogger<ImpactAnalyzer> logger) : IImpactAnalyzer
 {
-  private readonly IFlowAggregator _flowAggregator;
-  private readonly ILogger<ImpactAnalyzer> _logger;
-
-  public ImpactAnalyzer(IFlowAggregator flowAggregator, ILogger<ImpactAnalyzer> logger)
-  {
-    _flowAggregator = flowAggregator;
-    _logger = logger;
-  }
+  private readonly IFlowAggregator _flowAggregator = flowAggregator;
+  private readonly ILogger<ImpactAnalyzer> _logger = logger;
 
   public FlowImpactMetrics AnalyzeFlow(MessageFlow flow)
   {
@@ -78,7 +72,7 @@ public class ImpactAnalyzer : IImpactAnalyzer
 
     if (flows.Count == 0)
     {
-      return new List<MultiplierEndpoint>();
+      return [];
     }
 
     // Aggregate endpoint stats across all flows
@@ -91,26 +85,27 @@ public class ImpactAnalyzer : IImpactAnalyzer
 
       foreach (var msg in handled)
       {
-        if (!endpointStats.ContainsKey(msg.EndpointName))
+        if (!endpointStats.TryGetValue(msg.EndpointName, out (int received, int published, int commands, int events, HashSet<string> outputTypes) stats))
         {
-          endpointStats[msg.EndpointName] = (0, 0, 0, 0, new HashSet<string>());
+          stats = (0, 0, 0, 0, new HashSet<string>());
+          endpointStats[msg.EndpointName] = stats;
         }
-        var stats = endpointStats[msg.EndpointName];
+
         endpointStats[msg.EndpointName] = (stats.received + 1, stats.published, stats.commands, stats.events, stats.outputTypes);
       }
 
       foreach (var msg in published)
       {
-        if (!endpointStats.ContainsKey(msg.EndpointName))
+        if (!endpointStats.TryGetValue(msg.EndpointName, out (int received, int published, int commands, int events, HashSet<string> outputTypes) stats))
         {
-          endpointStats[msg.EndpointName] = (0, 0, 0, 0, new HashSet<string>());
+          stats = (0, 0, 0, 0, new HashSet<string>());
+          endpointStats[msg.EndpointName] = stats;
         }
-        var stats = endpointStats[msg.EndpointName];
 
         var commands = stats.commands + (msg.Intent == MessageIntent.Send ? 1 : 0);
         var events = stats.events + (msg.Intent == MessageIntent.Publish ? 1 : 0);
 
-        stats.outputTypes.Add(msg.MessageTypeShort);
+        stats.outputTypes.Add(msg.MessageTypeShort ?? "UNKNOWN");
         endpointStats[msg.EndpointName] = (stats.received, stats.published + 1, commands, events, stats.outputTypes);
       }
     }
@@ -128,7 +123,7 @@ public class ImpactAnalyzer : IImpactAnalyzer
           MultiplierRatio = (double)kvp.Value.published / kvp.Value.received,
           EventMultiplierRatio = (double)kvp.Value.events / kvp.Value.received,
           SampleSize = flows.Count,
-          CommonOutputMessages = kvp.Value.outputTypes.Take(5).ToList()
+          CommonOutputMessages = [.. kvp.Value.outputTypes.Take(5)]
         })
         .OrderByDescending(m => m.EventMultiplierRatio)
         .ToList();
@@ -136,7 +131,7 @@ public class ImpactAnalyzer : IImpactAnalyzer
     return multipliers;
   }
 
-  private List<MessageImpact> BuildMessageTree(ICollection<MessageTelemetry> messages)
+  private static List<MessageImpact> BuildMessageTree(ICollection<MessageTelemetry> messages)
   {
     var published = messages.Where(m => m.Direction == Core.Enums.MessageDirection.Outgoing).ToList();
     var handled = messages.Where(m => m.Direction == Core.Enums.MessageDirection.Incoming).ToList();
@@ -163,18 +158,18 @@ public class ImpactAnalyzer : IImpactAnalyzer
         .ToList();
 
     // Build tree recursively
-    return rootMessages.Select(m => BuildMessageImpactNode(m, messageGroups, handlersByMessageId, childrenByParent, 0)).ToList();
+    return [.. rootMessages.Select(m => BuildMessageImpactNode(m, messageGroups, handlersByMessageId, childrenByParent, 0))];
   }
 
-  private MessageImpact BuildMessageImpactNode(
+  private static MessageImpact BuildMessageImpactNode(
       MessageTelemetry message,
       Dictionary<string, MessageTelemetry> messageGroups,
       Dictionary<string, List<MessageTelemetry>> handlersByMessageId,
       Dictionary<string, List<MessageTelemetry>> childrenByParent,
       int depth)
   {
-    var handlers = handlersByMessageId.GetValueOrDefault(message.MessageId, new List<MessageTelemetry>());
-    var children = childrenByParent.GetValueOrDefault(message.MessageId, new List<MessageTelemetry>());
+    var handlers = handlersByMessageId.GetValueOrDefault(message.MessageId, []);
+    var children = childrenByParent.GetValueOrDefault(message.MessageId, []);
 
     var childNodes = children
         .Select(c => BuildMessageImpactNode(c, messageGroups, handlersByMessageId, childrenByParent, depth + 1))
@@ -183,10 +178,10 @@ public class ImpactAnalyzer : IImpactAnalyzer
     var impact = new MessageImpact
     {
       MessageId = message.MessageId,
-      MessageType = message.MessageTypeShort,
+      MessageType = message.MessageTypeShort ?? "UNKNOWN",
       PublishedBy = message.EndpointName,
       Depth = depth,
-      HandledBy = handlers.Select(h => h.EndpointName).Distinct().ToList(),
+      HandledBy = [.. handlers.Select(h => h.EndpointName).Distinct()],
       Children = childNodes,
       DownstreamMessageCount = childNodes.Sum(c => c.DownstreamMessageCount + 1),
       DownstreamEndpointCount = CountUniqueDownstreamEndpoints(childNodes)
@@ -195,14 +190,14 @@ public class ImpactAnalyzer : IImpactAnalyzer
     return impact;
   }
 
-  private int CountUniqueDownstreamEndpoints(List<MessageImpact> children)
+  private static int CountUniqueDownstreamEndpoints(List<MessageImpact> children)
   {
     var endpoints = new HashSet<string>();
     CollectEndpoints(children, endpoints);
     return endpoints.Count;
   }
 
-  private void CollectEndpoints(List<MessageImpact> nodes, HashSet<string> endpoints)
+  private static void CollectEndpoints(List<MessageImpact> nodes, HashSet<string> endpoints)
   {
     foreach (var node in nodes)
     {
@@ -210,6 +205,7 @@ public class ImpactAnalyzer : IImpactAnalyzer
       {
         endpoints.Add(handler);
       }
+      
       endpoints.Add(node.PublishedBy);
       CollectEndpoints(node.Children, endpoints);
     }
@@ -217,13 +213,17 @@ public class ImpactAnalyzer : IImpactAnalyzer
 
   private int CalculateMaxDepth(List<MessageImpact> tree)
   {
-    if (tree.Count == 0) return 0;
+    if (tree.Count == 0) 
+      return 0;
+
     return tree.Max(m => CalculateNodeDepth(m));
   }
 
   private int CalculateNodeDepth(MessageImpact node)
   {
-    if (node.Children.Count == 0) return node.Depth;
+    if (node.Children.Count == 0) 
+      return node.Depth;
+    
     return Math.Max(node.Depth, node.Children.Max(CalculateNodeDepth));
   }
 
@@ -256,7 +256,7 @@ public class ImpactAnalyzer : IImpactAnalyzer
         })
         .ToList();
 
-    return endpoints.OrderByDescending(e => e.EventMultiplierRatio).ToList();
+    return [.. endpoints.OrderByDescending(e => e.EventMultiplierRatio)];
   }
 
   private List<string> GetHighImpactMessageTypes(List<MessageFlow> flows)
@@ -270,11 +270,10 @@ public class ImpactAnalyzer : IImpactAnalyzer
       CountMessageTypeImpact(metrics.MessageTree, messageImpact);
     }
 
-    return messageImpact
+    return [.. messageImpact
         .OrderByDescending(kvp => kvp.Value)
         .Take(10)
-        .Select(kvp => kvp.Key)
-        .ToList();
+        .Select(kvp => kvp.Key)];
   }
 
   private static void CountMessageTypeImpact(List<MessageImpact> nodes, Dictionary<string, int> impact)
@@ -285,6 +284,7 @@ public class ImpactAnalyzer : IImpactAnalyzer
       {
         impact[node.MessageType] = 0;
       }
+      
       impact[node.MessageType] += node.DownstreamMessageCount;
       CountMessageTypeImpact(node.Children, impact);
     }
@@ -306,6 +306,6 @@ public class ImpactAnalyzer : IImpactAnalyzer
       flows.AddRange(historyFlows);
     }
 
-    return flows.Take(count).ToList();
+    return [.. flows.Take(count)];
   }
 }

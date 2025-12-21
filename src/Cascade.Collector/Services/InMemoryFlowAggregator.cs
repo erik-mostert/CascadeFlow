@@ -85,7 +85,9 @@ public class InMemoryFlowAggregator : IFlowAggregator
 
     if (!string.IsNullOrEmpty(messageType))
     {
-      query = query.Where(f => f.Messages.Any(m => m.MessageTypeShort.Contains(messageType, StringComparison.OrdinalIgnoreCase)));
+      query = query.Where(f => f.Messages.Any(m => 
+        m.MessageTypeShort != null &&
+        m.MessageTypeShort.Contains(messageType, StringComparison.OrdinalIgnoreCase)));
     }
 
     if (hasFailures.HasValue)

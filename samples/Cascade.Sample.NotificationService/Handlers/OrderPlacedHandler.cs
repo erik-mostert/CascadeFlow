@@ -13,7 +13,7 @@ public class OrderPlacedHandler(ILogger<OrderPlacedHandler> logger) : IHandleMes
             message.OrderId, message.CustomerId);
 
         // Simulate sending notification
-        await Task.Delay(50);
+        await Task.Delay(50, context.CancellationToken);
 
         await context.Publish(new CustomerNotified
         {

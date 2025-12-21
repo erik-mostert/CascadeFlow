@@ -59,7 +59,7 @@ public class OutgoingMessageTelemetryBehavior : Behavior<IOutgoingPhysicalMessag
     };
 
     // Fire and forget
-    _ = _dispatcher.DispatchAsync(telemetry);
+    _ = _dispatcher.DispatchAsync(telemetry, context.CancellationToken);
   }
 
   private static string? GetHeader(IOutgoingPhysicalMessageContext context, string key)

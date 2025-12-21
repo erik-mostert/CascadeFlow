@@ -84,7 +84,7 @@ public class IncomingMessageTelemetryBehavior : Behavior<IIncomingPhysicalMessag
       };
 
       // Fire and forget - never slow down message processing
-      _ = _dispatcher.DispatchAsync(telemetry);
+      _ = _dispatcher.DispatchAsync(telemetry, context.CancellationToken);
     }
   }
 

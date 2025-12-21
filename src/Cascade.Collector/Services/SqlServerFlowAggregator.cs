@@ -176,7 +176,7 @@ public class SqlServerFlowAggregator : IFlowAggregator
         CausationId = telemetry.CausationId,
         RelatedTo = telemetry.RelatedTo,
         MessageType = telemetry.MessageType,
-        MessageTypeShort = telemetry.MessageTypeShort,
+        MessageTypeShort = telemetry.MessageTypeShort ?? "UNKNOWN",
         EndpointName = telemetry.EndpointName,
         HostId = telemetry.HostId,
         Direction = (int)telemetry.Direction,
