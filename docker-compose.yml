@@ -1,0 +1,31 @@
+services:
+  collector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5100:8080"
+    environment:
+      - ConnectionStrings__CascadeDb=Server=sqlserver;Database=CascadeCollector;User Id=sa;Password=Cascade@123;TrustServerCertificate=True;
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Cascade@123
+    ports:
+      - "1433:1433"
+    volumes:
+      - cascade-sqldata:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Cascade@123" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  cascade-sqldata:

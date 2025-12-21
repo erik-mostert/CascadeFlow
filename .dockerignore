@@ -1,0 +1,22 @@
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/.idea
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/*.md
+**/Dockerfile*
+**/docker-compose*
+**/.dockerignore
+**/local-packages
+**/*.user
+**/*.suo
+**/launchSettings.json
+# Exclude sample projects from build context
+src/Cascade.Sample.*
+src/Cascade.Tool
+src/Cascade.NServiceBus
+src/Cascade.Web

@@ -1,5 +1,9 @@
 <Solution>
-  <Folder Name="/docker/" />
+  <Folder Name="/docker/">
+    <File Path=".dockerignore" />
+    <File Path="docker-compose.yml" />
+    <File Path="Dockerfile" />
+  </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Cascade.Sample.BillingService/Cascade.Sample.BillingService.csproj" />
     <Project Path="samples/Cascade.Sample.Contracts/Cascade.Sample.Contracts.csproj" />

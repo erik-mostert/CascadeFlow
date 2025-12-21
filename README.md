@@ -35,19 +35,32 @@ Cascade is a real-time telemetry and visualization platform for NServiceBus-base
 
 ## Getting Started
 
-### Prerequisites
+### Option 1: Docker (Recommended)
 
+The easiest way to run the Cascade Collector is with Docker Compose:
+
+```bash
+docker compose up
+```
+
+This starts both the Collector and SQL Server. The collector will be available at `http://localhost:5100`.
+
+To run just the collector (if you have your own SQL Server):
+
+```bash
+docker build -t cascade-collector .
+docker run -p 5100:8080 -e ConnectionStrings__CascadeDb="Server=host.docker.internal;Database=CascadeCollector;..." cascade-collector
+```
+
+### Option 2: Local Development
+
+Prerequisites:
 - .NET 10.0 SDK
 - SQL Server (LocalDB or SQL Server Express)
 - Node.js 18+
 
-### Running the Collector
-
 ```bash
-# Initialize the database (first time only)
-dotnet ef database update --project src/Cascade.Collector
-
-# Start the collector API
+# Start the collector API (database migrations run automatically)
 dotnet run --project src/Cascade.Collector
 ```
 
