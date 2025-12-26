@@ -24,5 +24,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Cascade.Collector.Tests/Cascade.Collector.Tests.csproj" Id="ce34cd8f-55d2-4a61-bba9-8765c9024e67" />
+    <Project Path="tests/Cascade.Core.Tests/Cascade.Core.Tests.csproj" Id="56d9c3a4-f1ea-4b54-8387-746aab4c5e6e" />
   </Folder>
 </Solution>
