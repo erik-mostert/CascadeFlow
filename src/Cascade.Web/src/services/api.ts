@@ -11,7 +11,7 @@ import type {
   FailureRateOverTime
 } from '../types';
 
-const API_BASE = 'http://localhost:5100/api';
+const API_BASE = '/api';
 
 export interface SearchParams {
   endpoint?: string;

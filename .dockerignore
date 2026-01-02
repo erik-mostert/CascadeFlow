@@ -19,4 +19,4 @@
 src/Cascade.Sample.*
 src/Cascade.Tool
 src/Cascade.NServiceBus
-src/Cascade.Web
+# Note: src/Cascade.Web is NOT excluded - needed for embedded UI build

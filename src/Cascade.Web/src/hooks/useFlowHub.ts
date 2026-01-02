@@ -16,7 +16,7 @@ interface FlowHubActions {
     clearFlows: () => void;
 }
 
-const COLLECTOR_URL = 'http://localhost:5100';
+const COLLECTOR_URL = '';
 
 export function useFlowHub(): FlowHubState & FlowHubActions {
     const [connectionStatus, setConnectionStatus] = useState<FlowHubState['connectionStatus']>('disconnected');

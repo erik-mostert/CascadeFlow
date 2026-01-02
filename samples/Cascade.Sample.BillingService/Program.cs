@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Hosting;
-using NServiceBus;
 
 Console.Title = "Billing";
 

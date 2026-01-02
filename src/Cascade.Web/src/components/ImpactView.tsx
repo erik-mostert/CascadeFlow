@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { ImpactTree } from './ImpactTree';
 import { Tooltip } from './Tooltip';
 import { getImpactSummary, getMultiplierEndpoints } from '../services/api';
 import type { SystemImpactSummary, MultiplierEndpoint } from '../types';
@@ -182,12 +181,6 @@ function MultiplierCard({ endpoint }: MultiplierCardProps) {
   const eventRatioColor = endpoint.eventMultiplierRatio >= 2
     ? 'text-orange-400'
     : endpoint.eventMultiplierRatio >= 1
-      ? 'text-yellow-400'
-      : 'text-gray-400';
-
-  const totalRatioColor = endpoint.multiplierRatio >= 2
-    ? 'text-orange-400'
-    : endpoint.multiplierRatio >= 1
       ? 'text-yellow-400'
       : 'text-gray-400';
 

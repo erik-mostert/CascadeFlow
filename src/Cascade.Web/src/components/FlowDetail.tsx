@@ -244,25 +244,3 @@ function formatDuration(start: string, end?: string): string {
   return `${(ms / 60000).toFixed(1)}m`;
 }
 
-function formatMessageTimestamp(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-
-  if (isToday) {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      fractionalSecondDigits: 3,
-    });
-  }
-
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}

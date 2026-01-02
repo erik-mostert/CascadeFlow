@@ -9,7 +9,7 @@ export function ConnectionStatus({ status }: ConnectionStatusProps) {
         <div className="bg-gray-800 rounded-lg p-6 text-center">
           <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-gray-300">Connecting to Cascade Collector...</p>
-          <p className="text-gray-500 text-sm mt-2">http://localhost:5100</p>
+          <p className="text-gray-500 text-sm mt-2">{window.location.origin}</p>
         </div>
       </div>
     );
@@ -22,7 +22,7 @@ export function ConnectionStatus({ status }: ConnectionStatusProps) {
           <div className="text-red-500 text-4xl mb-4">⚠</div>
           <p className="text-gray-300 font-semibold">Connection Failed</p>
           <p className="text-gray-500 text-sm mt-2">
-            Could not connect to the Cascade Collector at http://localhost:5100
+            Could not connect to the Cascade Collector at {window.location.origin}
           </p>
           <p className="text-gray-500 text-sm mt-4">
             Make sure the collector is running:

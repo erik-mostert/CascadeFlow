@@ -46,6 +46,10 @@ using (var scope = app.Services.CreateScope())
 
 app.UseCors();
 
+// Serve embedded UI
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 // Map SignalR hub
 app.MapHub<FlowHub>("/hubs/flow");
 
@@ -327,6 +331,9 @@ app.MapGet("/api/dashboard/failure-rate-over-time", async (
 
   return Results.Ok(result);
 });
+// SPA fallback - serves index.html for non-API routes (must be last)
+app.MapFallbackToFile("index.html");
+
 Console.WriteLine("Cascade Collector running at http://localhost:5100");
 Console.WriteLine("SignalR hub available at http://localhost:5100/hubs/flow");
 
