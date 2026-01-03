@@ -19,9 +19,12 @@ function App() {
   const [isLoadingFlow, setIsLoadingFlow] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('flows');
 
-  // Only show a flow if explicitly selected - don't auto-select
-  // This prevents the view from constantly updating as new messages arrive
-  const effectiveSelectedId = selectedFlowId;
+  // Auto-select the first (oldest) flow only if nothing is selected yet
+  // Since flows are sorted ascending, the first flow is stable and won't change
+  const sortedFlows = [...flows].sort(
+    (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
+  );
+  const effectiveSelectedId = selectedFlowId ?? (sortedFlows.length > 0 ? sortedFlows[0].correlationId : null);
 
   // Find flow in memory
   const memoryFlow = useMemo(() =>
