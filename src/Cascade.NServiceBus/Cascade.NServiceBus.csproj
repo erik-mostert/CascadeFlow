@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 
     <!-- NuGet package metadata -->
-    <PackageId>Cascade.NServiceBus</PackageId>
+    <PackageId>CascadeFlow.NServiceBus</PackageId>
     <Description>Zero-config NServiceBus telemetry for Cascade. Automatically captures message flows, endpoint topology, and performance metrics with no code changes required.</Description>
     <Authors>Erik Mostert</Authors>
     <Copyright>Copyright (c) Erik Mostert 2025</Copyright>
@@ -14,7 +14,7 @@
     <PackageProjectUrl>https://github.com/erik-mostert/Cascade</PackageProjectUrl>
     <RepositoryUrl>https://github.com/erik-mostert/Cascade.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>NServiceBus telemetry observability messaging distributed-systems microservices</PackageTags>
+    <PackageTags>NServiceBus telemetry observability messaging distributed-systems microservices CascadeFlow</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>See https://github.com/erik-mostert/Cascade/releases for release notes.</PackageReleaseNotes>
 
