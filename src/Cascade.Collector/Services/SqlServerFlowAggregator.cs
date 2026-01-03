@@ -11,14 +11,17 @@ public class SqlServerFlowAggregator : IFlowAggregator
   private readonly InMemoryFlowAggregator _memoryAggregator;
   private readonly IServiceScopeFactory _scopeFactory;
   private readonly ILogger<SqlServerFlowAggregator> _logger;
+  private readonly bool _useSqlite;
 
   public SqlServerFlowAggregator(
       IServiceScopeFactory scopeFactory,
-      ILogger<SqlServerFlowAggregator> logger)
+      ILogger<SqlServerFlowAggregator> logger,
+      DatabaseProviderInfo dbProvider)
   {
     _memoryAggregator = new InMemoryFlowAggregator();
     _scopeFactory = scopeFactory;
     _logger = logger;
+    _useSqlite = dbProvider.UseSqlite;
   }
 
   /// <inheritdoc/>
@@ -89,12 +92,28 @@ public class SqlServerFlowAggregator : IFlowAggregator
     using var scope = _scopeFactory.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CascadeDbContext>();
 
-    var correlationIds = await db.Messages
-        .Where(m => m.Timestamp >= start && m.Timestamp <= end && m.CorrelationId != null)
-        .Select(m => m.CorrelationId!)
-        .Distinct()
-        .Take(maxResults)
-        .ToListAsync();
+    List<string> correlationIds;
+    if (_useSqlite)
+    {
+      // SQLite: fetch all and filter client-side (DateTimeOffset not translatable)
+      var allMessages = await db.Messages.ToListAsync();
+      correlationIds = allMessages
+          .Where(m => m.Timestamp >= start && m.Timestamp <= end && m.CorrelationId != null)
+          .Select(m => m.CorrelationId!)
+          .Distinct()
+          .Take(maxResults)
+          .ToList();
+    }
+    else
+    {
+      // SQL Server: use efficient server-side query
+      correlationIds = await db.Messages
+          .Where(m => m.Timestamp >= start && m.Timestamp <= end && m.CorrelationId != null)
+          .Select(m => m.CorrelationId!)
+          .Distinct()
+          .Take(maxResults)
+          .ToListAsync();
+    }
 
     var flows = new List<MessageFlow>();
     foreach (var correlationId in correlationIds)

@@ -33,6 +33,9 @@ else
     Console.WriteLine("[Cascade] Using SQL Server database");
 }
 
+// Register database provider flag for query optimization
+builder.Services.AddSingleton(new DatabaseProviderInfo { UseSqlite = useSqlite });
+
 // Register services
 builder.Services.AddSingleton<IFlowAggregator, SqlServerFlowAggregator>();
 builder.Services.AddSingleton<ITopologyAggregator, SqlServerTopologyAggregator>();
@@ -224,17 +227,34 @@ app.MapGet("/api/impact/multipliers", async (
 // Dashboard statistics endpoints
 app.MapGet("/api/dashboard/stats", async (
     IFlowAggregator flowAggregator,
-    CascadeDbContext db) =>
+    CascadeDbContext db,
+    DatabaseProviderInfo dbProvider) =>
 {
   var now = DateTimeOffset.UtcNow;
   var last24h = now.AddHours(-24);
   var lastHour = now.AddHours(-1);
 
-  var totalMessages = await db.Messages.CountAsync();
-  var messagesLast24h = await db.Messages.CountAsync(m => m.CreatedAt >= last24h);
-  var messagesLastHour = await db.Messages.CountAsync(m => m.CreatedAt >= lastHour);
-  var totalFailures = await db.Messages.CountAsync(m => m.Success == false);
-  var failuresLast24h = await db.Messages.CountAsync(m => m.Success == false && m.CreatedAt >= last24h);
+  int totalMessages, messagesLast24h, messagesLastHour, totalFailures, failuresLast24h;
+
+  if (dbProvider.UseSqlite)
+  {
+    // SQLite: fetch all and filter client-side (DateTimeOffset not translatable)
+    var allMessages = await db.Messages.ToListAsync();
+    totalMessages = allMessages.Count;
+    messagesLast24h = allMessages.Count(m => m.CreatedAt >= last24h);
+    messagesLastHour = allMessages.Count(m => m.CreatedAt >= lastHour);
+    totalFailures = allMessages.Count(m => m.Success == false);
+    failuresLast24h = allMessages.Count(m => m.Success == false && m.CreatedAt >= last24h);
+  }
+  else
+  {
+    // SQL Server: use efficient server-side queries
+    totalMessages = await db.Messages.CountAsync();
+    messagesLast24h = await db.Messages.CountAsync(m => m.CreatedAt >= last24h);
+    messagesLastHour = await db.Messages.CountAsync(m => m.CreatedAt >= lastHour);
+    totalFailures = await db.Messages.CountAsync(m => m.Success == false);
+    failuresLast24h = await db.Messages.CountAsync(m => m.Success == false && m.CreatedAt >= last24h);
+  }
 
   var activeFlows = flowAggregator.GetActiveFlows().Count();
 
@@ -253,14 +273,24 @@ app.MapGet("/api/dashboard/stats", async (
 
 app.MapGet("/api/dashboard/messages-over-time", async (
     CascadeDbContext db,
+    DatabaseProviderInfo dbProvider,
     int? hours) =>
 {
   var hoursToQuery = hours ?? 24;
   var startTime = DateTimeOffset.UtcNow.AddHours(-hoursToQuery);
 
-  var messages = await db.Messages
-      .Where(m => m.CreatedAt >= startTime)
-      .ToListAsync();
+  List<Cascade.Collector.Data.Entities.StoredMessage> messages;
+  if (dbProvider.UseSqlite)
+  {
+    // SQLite: fetch all and filter client-side
+    var allMessages = await db.Messages.ToListAsync();
+    messages = allMessages.Where(m => m.CreatedAt >= startTime).ToList();
+  }
+  else
+  {
+    // SQL Server: use server-side filtering
+    messages = await db.Messages.Where(m => m.CreatedAt >= startTime).ToListAsync();
+  }
 
   var grouped = messages
       .GroupBy(m => new { m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, m.CreatedAt.Hour })
@@ -279,14 +309,22 @@ app.MapGet("/api/dashboard/messages-over-time", async (
 
 app.MapGet("/api/dashboard/top-endpoints", async (
     CascadeDbContext db,
+    DatabaseProviderInfo dbProvider,
     int? limit) =>
 {
   var take = limit ?? 10;
   var last24h = DateTimeOffset.UtcNow.AddHours(-24);
 
-  var messages = await db.Messages
-      .Where(m => m.CreatedAt >= last24h)
-      .ToListAsync();
+  List<Cascade.Collector.Data.Entities.StoredMessage> messages;
+  if (dbProvider.UseSqlite)
+  {
+    var allMessages = await db.Messages.ToListAsync();
+    messages = allMessages.Where(m => m.CreatedAt >= last24h).ToList();
+  }
+  else
+  {
+    messages = await db.Messages.Where(m => m.CreatedAt >= last24h).ToListAsync();
+  }
 
   var endpoints = messages
       .GroupBy(m => m.EndpointName)
@@ -309,14 +347,26 @@ app.MapGet("/api/dashboard/top-endpoints", async (
 
 app.MapGet("/api/dashboard/slowest-handlers", async (
     CascadeDbContext db,
+    DatabaseProviderInfo dbProvider,
     int? limit) =>
 {
   var take = limit ?? 10;
   var last24h = DateTimeOffset.UtcNow.AddHours(-24);
 
-  var messages = await db.Messages
-      .Where(m => m.CreatedAt >= last24h && m.Direction == 0 && m.ProcessingDuration != null)
-      .ToListAsync();
+  List<Cascade.Collector.Data.Entities.StoredMessage> messages;
+  if (dbProvider.UseSqlite)
+  {
+    var allMessages = await db.Messages.ToListAsync();
+    messages = allMessages
+        .Where(m => m.CreatedAt >= last24h && m.Direction == 0 && m.ProcessingDuration != null)
+        .ToList();
+  }
+  else
+  {
+    messages = await db.Messages
+        .Where(m => m.CreatedAt >= last24h && m.Direction == 0 && m.ProcessingDuration != null)
+        .ToListAsync();
+  }
 
   var handlers = messages
       .GroupBy(m => new { m.EndpointName, m.MessageTypeShort })
@@ -337,14 +387,22 @@ app.MapGet("/api/dashboard/slowest-handlers", async (
 
 app.MapGet("/api/dashboard/failure-rate-over-time", async (
     CascadeDbContext db,
+    DatabaseProviderInfo dbProvider,
     int? hours) =>
 {
   var hoursToQuery = hours ?? 24;
   var startTime = DateTimeOffset.UtcNow.AddHours(-hoursToQuery);
 
-  var messages = await db.Messages
-      .Where(m => m.CreatedAt >= startTime)
-      .ToListAsync();
+  List<Cascade.Collector.Data.Entities.StoredMessage> messages;
+  if (dbProvider.UseSqlite)
+  {
+    var allMessages = await db.Messages.ToListAsync();
+    messages = allMessages.Where(m => m.CreatedAt >= startTime).ToList();
+  }
+  else
+  {
+    messages = await db.Messages.Where(m => m.CreatedAt >= startTime).ToListAsync();
+  }
 
   var result = messages
       .GroupBy(m => new { m.CreatedAt.Year, m.CreatedAt.Month, m.CreatedAt.Day, m.CreatedAt.Hour })
@@ -368,3 +426,12 @@ Console.WriteLine("Cascade Collector running at http://localhost:5100");
 Console.WriteLine("SignalR hub available at http://localhost:5100/hubs/flow");
 
 app.Run();
+
+/// <summary>
+/// Configuration class to indicate which database provider is in use.
+/// Used to optimize queries for each provider.
+/// </summary>
+public class DatabaseProviderInfo
+{
+    public bool UseSqlite { get; init; }
+}
