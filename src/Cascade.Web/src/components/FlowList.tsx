@@ -87,11 +87,13 @@ export function FlowList({
     }
   };
 
+  // Sort ascending (oldest first) so new flows appear at the bottom
+  // This provides a stable view that doesn't jump around as new messages arrive
   const displayFlows = (searchResults ?? flows)
     .slice()
     .sort(
       (a, b) =>
-        new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+        new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
     );
 
   return (

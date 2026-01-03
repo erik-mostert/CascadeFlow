@@ -19,8 +19,9 @@ function App() {
   const [isLoadingFlow, setIsLoadingFlow] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('flows');
 
-  // Derive the effective selected ID - fall back to first flow if none selected
-  const effectiveSelectedId = selectedFlowId ?? (flows.length > 0 ? flows[0].correlationId : null);
+  // Only show a flow if explicitly selected - don't auto-select
+  // This prevents the view from constantly updating as new messages arrive
+  const effectiveSelectedId = selectedFlowId;
 
   // Find flow in memory
   const memoryFlow = useMemo(() =>
