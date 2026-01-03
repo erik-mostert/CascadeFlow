@@ -8,12 +8,30 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add database context
-var connectionString = builder.Configuration.GetConnectionString("CascadeDb")
-    ?? "Server=localhost;Database=CascadeCollector;Trusted_Connection=True;TrustServerCertificate=True;";
+// Determine database provider
+var connectionString = builder.Configuration.GetConnectionString("CascadeDb");
+var useSqlite = string.IsNullOrEmpty(connectionString);
 
-builder.Services.AddDbContext<CascadeDbContext>(options =>
-    options.UseSqlServer(connectionString));
+if (useSqlite)
+{
+    // Default: SQLite for zero-config setup
+    var dataPath = Environment.GetEnvironmentVariable("CASCADE_DATA_PATH") ?? "/data";
+    Directory.CreateDirectory(dataPath);
+    var sqliteConnectionString = $"Data Source={Path.Combine(dataPath, "cascade.db")}";
+
+    builder.Services.AddDbContext<CascadeDbContext>(options =>
+        options.UseSqlite(sqliteConnectionString));
+
+    Console.WriteLine($"[Cascade] Using SQLite database at {dataPath}/cascade.db");
+}
+else
+{
+    // SQL Server for production/scale
+    builder.Services.AddDbContext<CascadeDbContext>(options =>
+        options.UseSqlServer(connectionString));
+
+    Console.WriteLine("[Cascade] Using SQL Server database");
+}
 
 // Register services
 builder.Services.AddSingleton<IFlowAggregator, SqlServerFlowAggregator>();
@@ -35,13 +53,25 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Apply pending database migrations on startup
+// Initialize database on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CascadeDbContext>();
-    Console.WriteLine("Applying database migrations...");
-    db.Database.Migrate();
-    Console.WriteLine("Database migrations applied successfully.");
+
+    if (useSqlite)
+    {
+        // SQLite: Create database if it doesn't exist
+        Console.WriteLine("Initializing SQLite database...");
+        db.Database.EnsureCreated();
+        Console.WriteLine("SQLite database ready.");
+    }
+    else
+    {
+        // SQL Server: Apply migrations
+        Console.WriteLine("Applying database migrations...");
+        db.Database.Migrate();
+        Console.WriteLine("Database migrations applied successfully.");
+    }
 }
 
 app.UseCors();

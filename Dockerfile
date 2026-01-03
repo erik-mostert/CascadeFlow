@@ -28,6 +28,10 @@ COPY --from=frontend /app/wwwroot /app/publish/wwwroot/
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
+# Create data directory for SQLite database
+RUN mkdir -p /data && chmod 777 /data
+VOLUME /data
+
 EXPOSE 8080
 
 COPY --from=build /app/publish .
