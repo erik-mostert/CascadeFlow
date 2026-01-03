@@ -5,13 +5,25 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <Description>Zero-config NServiceBus telemetry for Cascade</Description>
+    <!-- NuGet package metadata -->
+    <PackageId>Cascade.NServiceBus</PackageId>
+    <Description>Zero-config NServiceBus telemetry for Cascade. Automatically captures message flows, endpoint topology, and performance metrics with no code changes required.</Description>
     <Authors>Erik Mostert</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/erik-mostert/Cascade</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/erik-mostert/Cascade.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>NServiceBus;telemetry;observability;messaging;distributed-systems;microservices</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
 
     <!-- MinVer configuration -->
     <MinVerDefaultPreReleaseIdentifiers>dev</MinVerDefaultPreReleaseIdentifiers>
     <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MinVer" Version="6.0.0">
