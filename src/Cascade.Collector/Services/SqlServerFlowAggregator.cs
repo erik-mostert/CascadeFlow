@@ -54,10 +54,23 @@ public class SqlServerFlowAggregator : IFlowAggregator
     using var scope = _scopeFactory.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CascadeDbContext>();
 
-    var messages = await db.Messages
-        .Where(m => m.CorrelationId == correlationId)
-        .OrderBy(m => m.Timestamp)
-        .ToListAsync();
+    List<StoredMessage> messages;
+    if (_useSqlite)
+    {
+      // SQLite: fetch and order client-side (DateTimeOffset not supported in ORDER BY)
+      var rawMessages = await db.Messages
+          .Where(m => m.CorrelationId == correlationId)
+          .ToListAsync();
+      messages = rawMessages.OrderBy(m => m.Timestamp).ToList();
+    }
+    else
+    {
+      // SQL Server: use server-side ordering
+      messages = await db.Messages
+          .Where(m => m.CorrelationId == correlationId)
+          .OrderBy(m => m.Timestamp)
+          .ToListAsync();
+    }
 
     if (messages.Count == 0)
       return null;
