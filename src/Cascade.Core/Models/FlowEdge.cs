@@ -1,22 +1,23 @@
-﻿namespace Cascade.Core.Models;
-
-/// <summary>
-/// Represents an edge in a message flow graph, connecting two nodes and describing the message type.
-/// </summary>
-public record FlowEdge
+namespace Cascade.Core.Models
 {
-  /// <summary>
-  /// Gets the unique identifier of the source node.
-  /// </summary>
-  public required string SourceId { get; init; }
+    /// <summary>
+    /// Represents an edge in a message flow graph, connecting two nodes and describing the message type.
+    /// </summary>
+    public class FlowEdge
+    {
+        /// <summary>
+        /// Gets or sets the unique identifier of the source node.
+        /// </summary>
+        public string SourceId { get; set; } = string.Empty;
 
-  /// <summary>
-  /// Gets the unique identifier of the target node.
-  /// </summary>
-  public required string TargetId { get; init; }
+        /// <summary>
+        /// Gets or sets the unique identifier of the target node.
+        /// </summary>
+        public string TargetId { get; set; } = string.Empty;
 
-  /// <summary>
-  /// Gets the label for the edge, typically the short name of the message type.
-  /// </summary>
-  public required string Label { get; init; }           // Message type short name
+        /// <summary>
+        /// Gets or sets the label for the edge, typically the short name of the message type.
+        /// </summary>
+        public string Label { get; set; } = string.Empty;
+    }
 }

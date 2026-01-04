@@ -20,10 +20,12 @@
     <Project Path="src/Cascade.Collector/Cascade.Collector.csproj" />
     <Project Path="src/Cascade.Core/Cascade.Core.csproj" />
     <Project Path="src/Cascade.NServiceBus/Cascade.NServiceBus.csproj" />
+    <Project Path="src/Cascade.NServiceBus.Framework/Cascade.NServiceBus.Framework.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Cascade.Collector.Tests/Cascade.Collector.Tests.csproj" Id="ce34cd8f-55d2-4a61-bba9-8765c9024e67" />
     <Project Path="tests/Cascade.Core.Tests/Cascade.Core.Tests.csproj" Id="56d9c3a4-f1ea-4b54-8387-746aab4c5e6e" />
     <Project Path="tests/Cascade.NServiceBus.Tests/Cascade.NServiceBus.Tests.csproj" Id="4c50eb19-b35d-4abc-bb2d-fcd1082a6682" />
+    <Project Path="tests/Cascade.NServiceBus.Framework.Tests/Cascade.NServiceBus.Framework.Tests.csproj" />
   </Folder>
 </Solution>

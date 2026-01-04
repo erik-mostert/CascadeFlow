@@ -48,20 +48,20 @@ public class InMemoryTopologyAggregator : ITopologyAggregator
 
           if (telemetry.Direction == MessageDirection.Incoming)
           {
-            existing.MessagesReceived++;
+            var newCount = existing.IncrementMessagesReceived();
             if (telemetry.Success == false)
-              existing.Failures++;
+              existing.IncrementFailures();
 
             // Update running average for processing time
             if (telemetry.ProcessingDuration.HasValue)
             {
-              var totalTime = existing.AverageProcessingTimeMs * (existing.MessagesReceived - 1);
-              existing.AverageProcessingTimeMs = (totalTime + telemetry.ProcessingDuration.Value.TotalMilliseconds) / existing.MessagesReceived;
+              var totalTime = existing.AverageProcessingTimeMs * (newCount - 1);
+              existing.AverageProcessingTimeMs = (totalTime + telemetry.ProcessingDuration.Value.TotalMilliseconds) / newCount;
             }
           }
           else
           {
-            existing.MessagesSent++;
+            existing.IncrementMessagesSent();
           }
 
           return existing;
@@ -80,7 +80,7 @@ public class InMemoryTopologyAggregator : ITopologyAggregator
         (_, existing) =>
         {
           existing.LastSeen = now;
-          existing.TimesObserved++;
+          existing.IncrementTimesObserved();
           return existing;
         });
 
@@ -107,9 +107,9 @@ public class InMemoryTopologyAggregator : ITopologyAggregator
           (_, existing) =>
           {
             existing.LastSeen = now;
-            existing.MessageCount++;
+            existing.IncrementMessageCount();
             if (telemetry.Success == false)
-              existing.FailureCount++;
+              existing.IncrementFailureCount();
             return existing;
           });
     }

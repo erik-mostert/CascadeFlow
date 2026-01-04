@@ -1,7 +1,8 @@
-﻿namespace Cascade.Core.Enums;
-
-public enum MessageDirection
+namespace Cascade.Core.Enums
 {
-  Incoming,
-  Outgoing
+    public enum MessageDirection
+    {
+        Incoming,
+        Outgoing
+    }
 }

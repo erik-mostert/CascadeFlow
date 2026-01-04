@@ -1,0 +1,105 @@
+name: Build and Publish NuGet Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+      - 'framework-v*'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish to NuGet.org'
+        required: true
+        default: 'false'
+        type: boolean
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NUGET_SOURCE: 'https://api.nuget.org/v3/index.json'
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for MinVer
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Create local-packages directory
+        run: mkdir -p local-packages
+        shell: bash
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run tests (.NET 10)
+        run: |
+          dotnet test tests/Cascade.Core.Tests --configuration Release --no-build --verbosity normal
+          dotnet test tests/Cascade.NServiceBus.Tests --configuration Release --no-build --verbosity normal
+          dotnet test tests/Cascade.Collector.Tests --configuration Release --no-build --verbosity normal
+
+      - name: Pack NuGet packages
+        run: |
+          dotnet pack src/Cascade.Core --configuration Release --no-build --output ./packages
+          dotnet pack src/Cascade.NServiceBus --configuration Release --no-build --output ./packages
+          dotnet pack src/Cascade.NServiceBus.Framework --configuration Release --no-build --output ./packages
+
+      - name: Upload packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./packages/*.nupkg
+
+      - name: Upload symbol packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-symbols
+          path: ./packages/*.snupkg
+
+  publish:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.publish == 'true'
+
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./packages
+
+      - name: Download symbol packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-symbols
+          path: ./packages
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish to NuGet.org
+        run: |
+          for package in ./packages/*.nupkg; do
+            echo "Publishing $package"
+            dotnet nuget push "$package" --api-key ${{ secrets.NUGET_API_KEY }} --source ${{ env.NUGET_SOURCE }} --skip-duplicate
+          done
+
+      - name: Publish symbols to NuGet.org
+        run: |
+          for package in ./packages/*.snupkg; do
+            echo "Publishing symbols $package"
+            dotnet nuget push "$package" --api-key ${{ secrets.NUGET_API_KEY }} --source ${{ env.NUGET_SOURCE }} --skip-duplicate
+          done
+        continue-on-error: true  # Symbol publishing is optional

@@ -1,23 +1,23 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
-    <LangVersion>latest</LangVersion>
-    <Nullable>enable</Nullable>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>7.3</LangVersion>
 
     <!-- NuGet package metadata -->
-    <PackageId>CascadeFlow.Core</PackageId>
-    <Description>Core models and types for CascadeFlow telemetry packages.</Description>
+    <PackageId>CascadeFlow.NServiceBus.Framework</PackageId>
+    <Description>Zero-config NServiceBus telemetry for Cascade. Supports .NET Framework 4.7.2+ with NServiceBus 8.x. Automatically captures message flows, endpoint topology, and performance metrics with no code changes required.</Description>
     <Authors>Erik Mostert</Authors>
     <Copyright>Copyright (c) Erik Mostert 2025</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/erik-mostert/Cascade</PackageProjectUrl>
     <RepositoryUrl>https://github.com/erik-mostert/Cascade.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>CascadeFlow telemetry observability messaging</PackageTags>
+    <PackageTags>NServiceBus telemetry observability messaging distributed-systems microservices CascadeFlow net-framework</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>See https://github.com/erik-mostert/Cascade/releases for release notes.</PackageReleaseNotes>
 
-    <!-- Source Link -->
+    <!-- Source Link - enables debugging into source code -->
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
@@ -25,7 +25,7 @@
 
     <!-- MinVer configuration -->
     <MinVerDefaultPreReleaseIdentifiers>dev</MinVerDefaultPreReleaseIdentifiers>
-    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerTagPrefix>framework-v</MinVerTagPrefix>
   </PropertyGroup>
 
   <ItemGroup>
@@ -41,6 +41,14 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="NServiceBus" Version="8.2.4" />
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+    <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cascade.Core\Cascade.Core.csproj" />
   </ItemGroup>
 
 </Project>

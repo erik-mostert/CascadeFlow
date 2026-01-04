@@ -62,46 +62,6 @@ public class MessageTelemetryTests
 
     #endregion
 
-    #region Record Equality Tests
-
-    [TestMethod]
-    public void Equality_WithSameValues_AreEqual()
-    {
-        // Arrange
-        var timestamp = DateTimeOffset.UtcNow;
-        var telemetry1 = CreateTelemetry(
-            id: "id-1",
-            messageId: "msg-1",
-            messageType: "Type",
-            endpointName: "Endpoint",
-            hostId: "host",
-            timestamp: timestamp);
-        var telemetry2 = CreateTelemetry(
-            id: "id-1",
-            messageId: "msg-1",
-            messageType: "Type",
-            endpointName: "Endpoint",
-            hostId: "host",
-            timestamp: timestamp);
-
-        // Act & Assert
-        Assert.AreEqual(telemetry1, telemetry2);
-    }
-
-    [TestMethod]
-    public void Equality_WithDifferentId_AreNotEqual()
-    {
-        // Arrange
-        var timestamp = DateTimeOffset.UtcNow;
-        var telemetry1 = CreateTelemetry(id: "id-1", timestamp: timestamp);
-        var telemetry2 = CreateTelemetry(id: "id-2", timestamp: timestamp);
-
-        // Act & Assert
-        Assert.AreNotEqual(telemetry1, telemetry2);
-    }
-
-    #endregion
-
     #region Optional Properties Tests
 
     [TestMethod]
