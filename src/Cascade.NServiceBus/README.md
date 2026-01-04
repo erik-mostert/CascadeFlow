@@ -2,10 +2,17 @@
 
 Zero-config telemetry for NServiceBus endpoints. Automatically captures message flows, endpoint topology, and performance metrics.
 
+## Requirements
+
+- .NET 10 or later
+- NServiceBus 9.x
+
+> **Using .NET Framework?** See [CascadeFlow.NServiceBus.Framework](https://www.nuget.org/packages/CascadeFlow.NServiceBus.Framework) for .NET Framework 4.7.2+ with NServiceBus 8.x.
+
 ## Installation
 
 ```bash
-dotnet add package CascadeFlow.NServiceBus --prerelease
+dotnet add package CascadeFlow.NServiceBus
 ```
 
 ## Quick Start
@@ -92,4 +99,5 @@ CASCADE_ENABLED=false
 
 - [GitHub Repository](https://github.com/erik-mostert/Cascade)
 - [Documentation](https://github.com/erik-mostert/Cascade#readme)
+- [.NET Framework Package](https://www.nuget.org/packages/CascadeFlow.NServiceBus.Framework)
 - [Report Issues](https://github.com/erik-mostert/Cascade/issues)

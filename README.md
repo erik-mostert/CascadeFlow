@@ -78,7 +78,24 @@ The web UI will be available at `http://localhost:5173`.
 
 ### Integrating with NServiceBus
 
-Add the `Cascade.NServiceBus` package to your endpoint and configure it:
+Choose the package that matches your environment:
+
+| Package | Target Framework | NServiceBus Version |
+|---------|------------------|---------------------|
+| `CascadeFlow.NServiceBus` | .NET 10+ | 9.x |
+| `CascadeFlow.NServiceBus.Framework` | .NET Framework 4.7.2+ | 8.x |
+
+```bash
+# For .NET 10+ with NServiceBus 9.x
+dotnet add package CascadeFlow.NServiceBus
+
+# For .NET Framework 4.7.2+ with NServiceBus 8.x
+dotnet add package CascadeFlow.NServiceBus.Framework
+```
+
+**That's it!** The package automatically registers telemetry behaviors via `INeedInitialization`. No code changes required.
+
+#### Optional: Explicit Configuration
 
 ```csharp
 var endpointConfiguration = new EndpointConfiguration("MyEndpoint");
@@ -99,7 +116,8 @@ Or use environment variables for zero-code configuration:
 |---------|-------------|
 | `Cascade.Core` | Shared domain models and enums |
 | `Cascade.Collector` | ASP.NET Core API and SignalR hub for receiving and serving telemetry |
-| `Cascade.NServiceBus` | NServiceBus plugin that captures and dispatches telemetry |
+| `Cascade.NServiceBus` | NServiceBus 9.x plugin for .NET 10+ |
+| `Cascade.NServiceBus.Framework` | NServiceBus 8.x plugin for .NET Framework 4.7.2+ |
 | `Cascade.Web` | React-based visualization dashboard |
 | `Cascade.Sample.*` | Sample microservices demonstrating integration |
 
