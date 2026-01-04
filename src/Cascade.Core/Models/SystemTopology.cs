@@ -1,35 +1,39 @@
-﻿namespace Cascade.Core.Models;
+using System;
+using System.Collections.Generic;
 
-/// <summary>
-/// The discovered system topology based on observed message traffic.
-/// This is the "living architecture diagram" of your distributed system.
-/// </summary>
-public class SystemTopology
+namespace Cascade.Core.Models
 {
-  /// <summary>All discovered endpoints keyed by name.</summary>
-  public Dictionary<string, TopologyEndpoint> Endpoints { get; init; } = [];
+    /// <summary>
+    /// The discovered system topology based on observed message traffic.
+    /// This is the "living architecture diagram" of your distributed system.
+    /// </summary>
+    public class SystemTopology
+    {
+        /// <summary>All discovered endpoints keyed by name.</summary>
+        public Dictionary<string, TopologyEndpoint> Endpoints { get; set; } = new Dictionary<string, TopologyEndpoint>();
 
-  /// <summary>All discovered message types keyed by full name.</summary>
-  public Dictionary<string, TopologyMessageType> MessageTypes { get; init; } = [];
+        /// <summary>All discovered message types keyed by full name.</summary>
+        public Dictionary<string, TopologyMessageType> MessageTypes { get; set; } = new Dictionary<string, TopologyMessageType>();
 
-  /// <summary>All discovered connections between endpoints.</summary>
-  public List<TopologyConnection> Connections { get; init; } = [];
+        /// <summary>All discovered connections between endpoints.</summary>
+        public List<TopologyConnection> Connections { get; set; } = new List<TopologyConnection>();
 
-  /// <summary>When the first message was observed.</summary>
-  public DateTimeOffset FirstObserved { get; set; }
+        /// <summary>When the first message was observed.</summary>
+        public DateTimeOffset FirstObserved { get; set; }
 
-  /// <summary>When the topology was last updated.</summary>
-  public DateTimeOffset LastUpdated { get; set; }
+        /// <summary>When the topology was last updated.</summary>
+        public DateTimeOffset LastUpdated { get; set; }
 
-  /// <summary>Total number of messages observed across all endpoints.</summary>
-  public long TotalMessagesObserved { get; set; }
+        /// <summary>Total number of messages observed across all endpoints.</summary>
+        public long TotalMessagesObserved { get; set; }
 
-  /// <summary>Number of unique endpoints discovered.</summary>
-  public int EndpointCount => Endpoints.Count;
+        /// <summary>Number of unique endpoints discovered.</summary>
+        public int EndpointCount => Endpoints.Count;
 
-  /// <summary>Number of unique message types discovered.</summary>
-  public int MessageTypeCount => MessageTypes.Count;
+        /// <summary>Number of unique message types discovered.</summary>
+        public int MessageTypeCount => MessageTypes.Count;
 
-  /// <summary>Number of unique connections discovered.</summary>
-  public int ConnectionCount => Connections.Count;
+        /// <summary>Number of unique connections discovered.</summary>
+        public int ConnectionCount => Connections.Count;
+    }
 }

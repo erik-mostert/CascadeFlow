@@ -1,37 +1,40 @@
-﻿namespace Cascade.Core.Models;
+using System;
 
-/// <summary>
-/// Represents a node in a message flow graph, corresponding to a message event at an endpoint.
-/// </summary>
-public record FlowNode
+namespace Cascade.Core.Models
 {
-  /// <summary>
-  /// Gets the unique identifier for the node.
-  /// </summary>
-  public required string Id { get; init; }
+    /// <summary>
+    /// Represents a node in a message flow graph, corresponding to a message event at an endpoint.
+    /// </summary>
+    public class FlowNode
+    {
+        /// <summary>
+        /// Gets or sets the unique identifier for the node.
+        /// </summary>
+        public string Id { get; set; } = string.Empty;
 
-  /// <summary>
-  /// Gets the label for the node, typically the endpoint name.
-  /// </summary>
-  public required string Label { get; init; }
+        /// <summary>
+        /// Gets or sets the label for the node, typically the endpoint name.
+        /// </summary>
+        public string Label { get; set; } = string.Empty;
 
-  /// <summary>
-  /// Gets the full type name of the message associated with this node.
-  /// </summary>
-  public required string MessageType { get; init; }
+        /// <summary>
+        /// Gets or sets the full type name of the message associated with this node.
+        /// </summary>
+        public string MessageType { get; set; } = string.Empty;
 
-  /// <summary>
-  /// Gets the timestamp when the message event occurred.
-  /// </summary>
-  public required DateTimeOffset Timestamp { get; init; }
+        /// <summary>
+        /// Gets or sets the timestamp when the message event occurred.
+        /// </summary>
+        public DateTimeOffset Timestamp { get; set; }
 
-  /// <summary>
-  /// Gets a value indicating whether the message processing succeeded at this node.
-  /// </summary>
-  public required bool Success { get; init; }
+        /// <summary>
+        /// Gets or sets a value indicating whether the message processing succeeded at this node.
+        /// </summary>
+        public bool Success { get; set; }
 
-  /// <summary>
-  /// Gets the duration of message processing at this node, if available.
-  /// </summary>
-  public TimeSpan? Duration { get; init; }
+        /// <summary>
+        /// Gets or sets the duration of message processing at this node, if available.
+        /// </summary>
+        public TimeSpan? Duration { get; set; }
+    }
 }

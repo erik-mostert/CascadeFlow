@@ -13,8 +13,14 @@ $cacheDir = (dotnet nuget locals global-packages --list) -replace "global-packag
 Remove-Item "$cacheDir/cascade.*" -Recurse -ErrorAction SilentlyContinue
 
 # Pack with auto-generated version
+Write-Host "Packing Cascade.Core..." -ForegroundColor Green
+dotnet pack src/Cascade.Core -o ./local-packages
+
 Write-Host "Packing Cascade.NServiceBus..." -ForegroundColor Green
 dotnet pack src/Cascade.NServiceBus -o ./local-packages
+
+Write-Host "Packing Cascade.NServiceBus.Framework..." -ForegroundColor Green
+dotnet pack src/Cascade.NServiceBus.Framework -o ./local-packages
 
 # Show what was created
 Write-Host "`nCreated packages:" -ForegroundColor Green

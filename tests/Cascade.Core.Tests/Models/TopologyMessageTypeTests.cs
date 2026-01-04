@@ -125,58 +125,6 @@ public class TopologyMessageTypeTests
 
     #endregion
 
-    #region Record Behavior Tests
-
-    [TestMethod]
-    public void RecordEquality_WithSameFullName_AreEqual()
-    {
-        // Arrange
-        var timestamp = DateTimeOffset.UtcNow;
-        var messageType1 = new TopologyMessageType
-        {
-            FullName = "Namespace.TestMessage, Assembly",
-            FirstSeen = timestamp,
-            LastSeen = timestamp,
-            TimesObserved = 10
-        };
-        var messageType2 = new TopologyMessageType
-        {
-            FullName = "Namespace.TestMessage, Assembly",
-            FirstSeen = timestamp,
-            LastSeen = timestamp,
-            TimesObserved = 10
-        };
-
-        // Act & Assert
-        Assert.AreEqual(messageType1, messageType2);
-    }
-
-    [TestMethod]
-    public void RecordEquality_WithDifferentTimesObserved_AreNotEqual()
-    {
-        // Arrange
-        var timestamp = DateTimeOffset.UtcNow;
-        var messageType1 = new TopologyMessageType
-        {
-            FullName = "Namespace.TestMessage, Assembly",
-            FirstSeen = timestamp,
-            LastSeen = timestamp,
-            TimesObserved = 10
-        };
-        var messageType2 = new TopologyMessageType
-        {
-            FullName = "Namespace.TestMessage, Assembly",
-            FirstSeen = timestamp,
-            LastSeen = timestamp,
-            TimesObserved = 20
-        };
-
-        // Act & Assert
-        Assert.AreNotEqual(messageType1, messageType2);
-    }
-
-    #endregion
-
     private static TopologyMessageType CreateMessageType(
         string fullName = "Namespace.TestMessage, Assembly",
         long timesObserved = 0)

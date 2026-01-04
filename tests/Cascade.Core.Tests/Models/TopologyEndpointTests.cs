@@ -178,44 +178,6 @@ public class TopologyEndpointTests
 
     #endregion
 
-    #region Record Behavior Tests
-
-    [TestMethod]
-    public void RecordEquality_WithSharedHostIds_AreEqual()
-    {
-        // Arrange - Share the same HostIds instance for reference equality
-        var sharedHostIds = new HashSet<string>();
-        var endpoint1 = new TopologyEndpoint { Name = "TestEndpoint", HostIds = sharedHostIds };
-        var endpoint2 = new TopologyEndpoint { Name = "TestEndpoint", HostIds = sharedHostIds };
-
-        // Act & Assert - Records are equal when all properties match (including reference equality for HostIds)
-        Assert.AreEqual(endpoint1, endpoint2);
-    }
-
-    [TestMethod]
-    public void RecordEquality_WithDifferentHostIdsInstances_AreNotEqual()
-    {
-        // Arrange - Each gets its own HostIds instance (default behavior)
-        var endpoint1 = new TopologyEndpoint { Name = "TestEndpoint" };
-        var endpoint2 = new TopologyEndpoint { Name = "TestEndpoint" };
-
-        // Assert - Records are NOT equal because HostIds are different references
-        Assert.AreNotEqual(endpoint1, endpoint2);
-    }
-
-    [TestMethod]
-    public void RecordEquality_AfterMutation_MayDiffer()
-    {
-        // Arrange
-        var endpoint1 = CreateEndpoint(messagesReceived: 10);
-        var endpoint2 = CreateEndpoint(messagesReceived: 20);
-
-        // Assert - Note: record equality compares all properties
-        Assert.AreNotEqual(endpoint1, endpoint2);
-    }
-
-    #endregion
-
     private static TopologyEndpoint CreateEndpoint(
         string name = "TestEndpoint",
         long messagesReceived = 0,

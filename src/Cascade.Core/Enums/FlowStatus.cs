@@ -1,9 +1,10 @@
-﻿namespace Cascade.Core.Enums;
-
-public enum FlowStatus
+namespace Cascade.Core.Enums
 {
-  InProgress,
-  Completed,
-  Failed,
-  TimedOut
+    public enum FlowStatus
+    {
+        InProgress,
+        Completed,
+        Failed,
+        TimedOut
+    }
 }
