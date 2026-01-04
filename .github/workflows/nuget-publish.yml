@@ -32,6 +32,10 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Create local-packages directory
+        run: mkdir -p local-packages
+        shell: bash
+
       - name: Restore dependencies
         run: dotnet restore
 
