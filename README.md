@@ -1,6 +1,6 @@
-# Cascade
+# CascadeFlow
 
-Cascade is a real-time telemetry and visualization platform for NServiceBus-based distributed systems. It captures message flows across microservices, aggregates them into correlated flows, and provides a web-based UI for observing system behavior.
+CascadeFlow is a real-time telemetry and visualization platform for NServiceBus-based distributed systems. It captures message flows across microservices, aggregates them into correlated flows, and provides a web-based UI for observing system behavior.
 
 ## Features
 
