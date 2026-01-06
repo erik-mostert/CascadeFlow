@@ -121,6 +121,58 @@ Or use environment variables for zero-code configuration:
 | `Cascade.Web` | React-based visualization dashboard |
 | `Cascade.Sample.*` | Sample microservices demonstrating integration |
 
+## API Key Authentication
+
+The Collector supports optional API key authentication to secure the telemetry ingestion endpoint.
+
+### Enabling Authentication
+
+Set the environment variable on the Collector:
+
+```bash
+Cascade__RequireApiKey=true
+```
+
+### Creating API Keys
+
+1. Open the Cascade web UI and navigate to **Settings**
+2. Click **Create Key** and provide a name (and optional endpoint restriction)
+3. Copy the generated key - it's only shown once
+
+### Configuring NServiceBus Endpoints
+
+Set the API key via environment variable (recommended):
+
+```bash
+CASCADE_API_KEY=csk_your-api-key-here
+```
+
+Or configure explicitly:
+
+```csharp
+endpointConfiguration.UseCascade(options =>
+{
+    options.ApiKey = "csk_your-api-key-here";
+});
+```
+
+### Docker Compose Example
+
+```yaml
+services:
+  collector:
+    image: ghcr.io/erik-mostert/cascade-collector:main
+    environment:
+      - Cascade__RequireApiKey=true
+    ports:
+      - "5100:8080"
+
+  my-service:
+    environment:
+      - CASCADE_COLLECTOR_URL=http://collector:8080
+      - CASCADE_API_KEY=csk_your-api-key-here
+```
+
 ## Resilience
 
 The NServiceBus integration is designed to never impact your services:

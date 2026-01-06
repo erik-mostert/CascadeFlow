@@ -1,7 +1,6 @@
 ﻿using Cascade.Sample.Contracts.Commands;
-using Microsoft.Extensions.Hosting;
-using NServiceBus;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 Console.Title = "OrderService";
 

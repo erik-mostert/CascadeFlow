@@ -37,7 +37,8 @@ namespace Cascade.NServiceBus.Framework
                     ?? "http://localhost:5100",
                 EndpointName = settings.EndpointName(),
                 HostId = Environment.GetEnvironmentVariable("CASCADE_HOST_ID")
-                    ?? Environment.MachineName
+                    ?? Environment.MachineName,
+                ApiKey = Environment.GetEnvironmentVariable("CASCADE_API_KEY")
             };
 
             RegisterBehaviors(configuration, options);

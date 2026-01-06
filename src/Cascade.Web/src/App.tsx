@@ -5,11 +5,12 @@ import { FlowDetail } from './components/FlowDetail';
 import { TopologyView } from './components/TopologyView';
 import { ImpactView } from './components/ImpactView';
 import { ConnectionStatus } from './components/ConnectionStatus';
+import { ApiKeysView } from './components/ApiKeysView';
 import { getFlowById } from './services/api';
 import type { MessageFlow } from './types';
 import { DashboardView } from './components/DashboardView';
 
-type ViewMode = 'flows' | 'topology' | 'impact' | 'dashboard';
+type ViewMode = 'flows' | 'topology' | 'impact' | 'dashboard' | 'settings';
 
 function App() {
   const { connectionStatus, flows, topology, clearFlows } = useFlowHub();
@@ -127,6 +128,15 @@ function App() {
             >
               Dashboard
             </button>
+            <button
+              onClick={() => setViewMode('settings')}
+              className={`px-4 py-2 rounded transition-colors ${viewMode === 'settings'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+            >
+              Settings
+            </button>
           </div>
 
           <div className="flex items-center gap-4">
@@ -205,6 +215,10 @@ function App() {
         ) : viewMode === 'impact' ? (
           <div className="h-full">
             <ImpactView />
+          </div>
+        ) : viewMode === 'settings' ? (
+          <div className="h-full">
+            <ApiKeysView />
           </div>
         ) : (
           <div className="h-full">

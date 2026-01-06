@@ -8,7 +8,9 @@ import type {
   MessagesOverTime,
   TopEndpoint,
   SlowestHandler,
-  FailureRateOverTime
+  FailureRateOverTime,
+  ApiKey,
+  CreateApiKeyResponse
 } from '../types';
 
 const API_BASE = '/api';
@@ -171,4 +173,45 @@ export async function getFailureRateOverTime(hours = 24): Promise<FailureRateOve
     throw new Error(`Failure rate fetch failed: ${response.statusText}`);
   }
   return response.json();
+}
+
+// API Key Management
+export async function getApiKeys(): Promise<ApiKey[]> {
+  const response = await fetch(`${API_BASE}/keys`);
+  if (!response.ok) {
+    throw new Error(`API keys fetch failed: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function createApiKey(name: string, endpointName?: string): Promise<CreateApiKeyResponse> {
+  const response = await fetch(`${API_BASE}/keys`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name, endpointName: endpointName || null }),
+  });
+  if (!response.ok) {
+    throw new Error(`API key creation failed: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function revokeApiKey(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/keys/${id}/revoke`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error(`API key revocation failed: ${response.statusText}`);
+  }
+}
+
+export async function deleteApiKey(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/keys/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(`API key deletion failed: ${response.statusText}`);
+  }
 }

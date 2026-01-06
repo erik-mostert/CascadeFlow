@@ -1,5 +1,7 @@
 ﻿using Cascade.Collector.Data;
+using Cascade.Collector.Filters;
 using Cascade.Collector.Hubs;
+using Cascade.Collector.Models;
 using Cascade.Collector.Services;
 using Cascade.Core.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -40,6 +42,7 @@ builder.Services.AddSingleton(new DatabaseProviderInfo { UseSqlite = useSqlite }
 builder.Services.AddSingleton<IFlowAggregator, SqlServerFlowAggregator>();
 builder.Services.AddSingleton<ITopologyAggregator, SqlServerTopologyAggregator>();
 builder.Services.AddScoped<IImpactAnalyzer, ImpactAnalyzer>();
+builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
 builder.Services.AddSignalR();
 
 // Configure CORS for frontend development
@@ -93,7 +96,7 @@ app.MapGet("/api/health", () => new
   timestamp = DateTimeOffset.UtcNow
 });
 
-// Telemetry ingestion endpoint
+// Telemetry ingestion endpoint (protected by API key)
 app.MapPost("/api/telemetry", async (
     MessageTelemetry telemetry,
     IFlowAggregator flowAggregator,
@@ -112,7 +115,8 @@ app.MapPost("/api/telemetry", async (
   await hubContext.Clients.All.SendAsync("TopologyUpdated", topologyAggregator.GetTopology());
 
   return Results.Ok(new { received = true, id = telemetry.Id, flowId = flow.CorrelationId });
-});
+})
+.AddEndpointFilter<ApiKeyAuthenticationFilter>();
 
 // Flow endpoints
 app.MapGet("/api/flows", (IFlowAggregator aggregator) =>
@@ -419,6 +423,62 @@ app.MapGet("/api/dashboard/failure-rate-over-time", async (
 
   return Results.Ok(result);
 });
+// API Key management endpoints
+app.MapGet("/api/keys", async (IApiKeyService apiKeyService) =>
+{
+    var keys = await apiKeyService.GetAllKeysAsync();
+    var response = keys.Select(k => new ApiKeyResponse(
+        k.Id,
+        k.KeyPrefix,
+        k.Name,
+        k.EndpointName,
+        k.CreatedAt,
+        k.LastUsedAt,
+        k.IsActive
+    ));
+    return Results.Ok(response);
+});
+
+app.MapPost("/api/keys", async (
+    CreateApiKeyRequest request,
+    IApiKeyService apiKeyService) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Name))
+    {
+        return Results.BadRequest(new { error = "Name is required" });
+    }
+
+    var (plaintextKey, entity) = await apiKeyService.CreateKeyAsync(request.Name, request.EndpointName);
+
+    var response = new CreateApiKeyResponse(
+        entity.Id,
+        plaintextKey, // Only time the key is returned
+        entity.KeyPrefix,
+        entity.Name,
+        entity.EndpointName,
+        entity.CreatedAt,
+        entity.IsActive
+    );
+
+    return Results.Created($"/api/keys/{entity.Id}", response);
+});
+
+app.MapPost("/api/keys/{id:int}/revoke", async (int id, IApiKeyService apiKeyService) =>
+{
+    var success = await apiKeyService.RevokeKeyAsync(id);
+    return success
+        ? Results.Ok(new { revoked = true, id })
+        : Results.NotFound(new { error = "API key not found" });
+});
+
+app.MapDelete("/api/keys/{id:int}", async (int id, IApiKeyService apiKeyService) =>
+{
+    var success = await apiKeyService.DeleteKeyAsync(id);
+    return success
+        ? Results.Ok(new { deleted = true, id })
+        : Results.NotFound(new { error = "API key not found" });
+});
+
 // SPA fallback - serves index.html for non-API routes (must be last)
 app.MapFallbackToFile("index.html");
 

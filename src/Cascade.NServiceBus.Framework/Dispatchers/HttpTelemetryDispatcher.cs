@@ -18,15 +18,22 @@ namespace Cascade.NServiceBus.Framework.Dispatchers
     {
         private readonly HttpClient _httpClient;
         private readonly string _telemetryUrl;
+        private readonly string _apiKey;
         private readonly Channel<MessageTelemetry> _channel;
         private readonly Task _sendTask;
         private readonly CancellationTokenSource _cts;
         private readonly JsonSerializerOptions _jsonOptions;
 
+        /// <summary>
+        /// The HTTP header name for the API key.
+        /// </summary>
+        public const string ApiKeyHeaderName = "X-API-Key";
+
         public HttpTelemetryDispatcher(HttpClient httpClient, CascadeOptions options)
         {
             _httpClient = httpClient;
             _telemetryUrl = options.CollectorUrl.TrimEnd('/') + "/api/telemetry";
+            _apiKey = options.ApiKey;
             _cts = new CancellationTokenSource();
 
             _jsonOptions = new JsonSerializerOptions
@@ -87,14 +94,24 @@ namespace Cascade.NServiceBus.Framework.Dispatchers
             try
             {
                 var json = JsonSerializer.Serialize(telemetry, _jsonOptions);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                using (var response = await _httpClient.PostAsync(_telemetryUrl, content, _cts.Token).ConfigureAwait(false))
+                using (var request = new HttpRequestMessage(HttpMethod.Post, _telemetryUrl))
                 {
-                    // Log failures but don't throw
-                    if (!response.IsSuccessStatusCode)
+                    request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                    // Add API key header if configured
+                    if (!string.IsNullOrEmpty(_apiKey))
                     {
-                        Console.WriteLine("[Cascade] Failed to send telemetry: " + response.StatusCode);
+                        request.Headers.Add(ApiKeyHeaderName, _apiKey);
+                    }
+
+                    using (var response = await _httpClient.SendAsync(request, _cts.Token).ConfigureAwait(false))
+                    {
+                        // Log failures but don't throw
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            Console.WriteLine("[Cascade] Failed to send telemetry: " + response.StatusCode);
+                        }
                     }
                 }
             }
