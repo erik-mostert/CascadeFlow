@@ -13,14 +13,21 @@ public class HttpTelemetryDispatcher : ITelemetryDispatcher
 {
   private readonly HttpClient _httpClient;
   private readonly string _telemetryUrl;
+  private readonly string? _apiKey;
   private readonly Channel<MessageTelemetry> _channel;
   private readonly Task _sendTask;
   private readonly CancellationTokenSource _cts;
+
+  /// <summary>
+  /// The HTTP header name for the API key.
+  /// </summary>
+  public const string ApiKeyHeaderName = "X-API-Key";
 
   public HttpTelemetryDispatcher(HttpClient httpClient, CascadeOptions options)
   {
     _httpClient = httpClient;
     _telemetryUrl = $"{options.CollectorUrl.TrimEnd('/')}/api/telemetry";
+    _apiKey = options.ApiKey;
     _cts = new CancellationTokenSource();
 
     // Bounded channel - drops oldest if full (never blocks producer)
@@ -71,7 +78,16 @@ public class HttpTelemetryDispatcher : ITelemetryDispatcher
   {
     try
     {
-      using var response = await _httpClient.PostAsJsonAsync(_telemetryUrl, telemetry, _cts.Token);
+      using var request = new HttpRequestMessage(HttpMethod.Post, _telemetryUrl);
+      request.Content = JsonContent.Create(telemetry);
+
+      // Add API key header if configured
+      if (!string.IsNullOrEmpty(_apiKey))
+      {
+        request.Headers.Add(ApiKeyHeaderName, _apiKey);
+      }
+
+      using var response = await _httpClient.SendAsync(request, _cts.Token);
 
       // Log failures but don't throw
       if (!response.IsSuccessStatusCode)

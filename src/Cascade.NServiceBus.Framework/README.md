@@ -33,6 +33,7 @@ Use the `CascadeFlow.NServiceBus` package instead, which targets modern .NET wit
 | `CASCADE_ENDPOINT_NAME` | Auto-detected | Endpoint identifier |
 | `CASCADE_HOST_ID` | Machine name | Host/instance identifier |
 | `CASCADE_ENABLED` | `true` | Set to `false` to disable |
+| `CASCADE_API_KEY` | *(none)* | API key for authentication (if collector requires it) |
 
 ### Explicit Configuration
 
@@ -46,6 +47,7 @@ endpointConfiguration.UseCascade(options =>
     options.HostId = "instance-1";
     options.IncludeHeaders = true;
     options.BufferSize = 1000;
+    options.ApiKey = "csk_your-api-key"; // If collector requires authentication
 });
 ```
 

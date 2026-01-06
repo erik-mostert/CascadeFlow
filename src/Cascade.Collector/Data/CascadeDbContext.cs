@@ -12,6 +12,7 @@ public class CascadeDbContext : DbContext
     public DbSet<StoredMessage> Messages => Set<StoredMessage>();
     public DbSet<StoredEndpoint> Endpoints => Set<StoredEndpoint>();
     public DbSet<StoredConnection> Connections => Set<StoredConnection>();
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -64,6 +65,19 @@ public class CascadeDbContext : DbContext
             entity.Property(e => e.MessageType).HasMaxLength(500).IsRequired();
             entity.Property(e => e.MessageTypeShort).HasMaxLength(200).IsRequired();
             entity.HasIndex(e => new { e.SourceEndpoint, e.TargetEndpoint, e.MessageType }).IsUnique();
+        });
+
+        // ApiKey configuration
+        modelBuilder.Entity<ApiKey>(entity =>
+        {
+            entity.ToTable("ApiKeys");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.KeyHash).HasMaxLength(64).IsRequired(); // SHA-256 hex string
+            entity.Property(e => e.KeyPrefix).HasMaxLength(8).IsRequired();
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.EndpointName).HasMaxLength(200);
+            entity.HasIndex(e => e.KeyHash).IsUnique();
+            entity.HasIndex(e => e.IsActive);
         });
     }
 }

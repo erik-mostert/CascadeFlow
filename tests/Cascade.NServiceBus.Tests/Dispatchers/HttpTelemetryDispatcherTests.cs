@@ -222,18 +222,82 @@ public class HttpTelemetryDispatcherTests
 
     #endregion
 
+    #region API Key Header Tests
+
+    [TestMethod]
+    public async Task DispatchAsync_WithApiKey_AddsHeaderToRequest()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler();
+        var httpClient = new HttpClient(handler);
+        var options = CreateOptions(apiKey: "csk_test-api-key-12345");
+        using var dispatcher = new HttpTelemetryDispatcher(httpClient, options);
+        var telemetry = CreateTelemetry();
+
+        // Act
+        await dispatcher.DispatchAsync(telemetry);
+        await Task.Delay(100);
+
+        // Assert
+        Assert.IsNotNull(handler.LastRequestHeaders);
+        Assert.IsTrue(handler.LastRequestHeaders.ContainsKey("X-API-Key"));
+        Assert.AreEqual("csk_test-api-key-12345", handler.LastRequestHeaders["X-API-Key"]);
+    }
+
+    [TestMethod]
+    public async Task DispatchAsync_WithoutApiKey_DoesNotAddHeader()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler();
+        var httpClient = new HttpClient(handler);
+        var options = CreateOptions(apiKey: null);
+        using var dispatcher = new HttpTelemetryDispatcher(httpClient, options);
+        var telemetry = CreateTelemetry();
+
+        // Act
+        await dispatcher.DispatchAsync(telemetry);
+        await Task.Delay(100);
+
+        // Assert
+        Assert.IsNotNull(handler.LastRequestHeaders);
+        Assert.IsFalse(handler.LastRequestHeaders.ContainsKey("X-API-Key"));
+    }
+
+    [TestMethod]
+    public async Task DispatchAsync_WithEmptyApiKey_DoesNotAddHeader()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler();
+        var httpClient = new HttpClient(handler);
+        var options = CreateOptions(apiKey: "");
+        using var dispatcher = new HttpTelemetryDispatcher(httpClient, options);
+        var telemetry = CreateTelemetry();
+
+        // Act
+        await dispatcher.DispatchAsync(telemetry);
+        await Task.Delay(100);
+
+        // Assert
+        Assert.IsNotNull(handler.LastRequestHeaders);
+        Assert.IsFalse(handler.LastRequestHeaders.ContainsKey("X-API-Key"));
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static CascadeOptions CreateOptions(
         string collectorUrl = "http://localhost:5100",
-        int bufferSize = 1000)
+        int bufferSize = 1000,
+        string? apiKey = null)
     {
         return new CascadeOptions
         {
             CollectorUrl = collectorUrl,
             EndpointName = "TestEndpoint",
             HostId = "test-host",
-            BufferSize = bufferSize
+            BufferSize = bufferSize,
+            ApiKey = apiKey
         };
     }
 
@@ -265,6 +329,7 @@ public class HttpTelemetryDispatcherTests
         public int RequestCount { get; private set; }
         public Uri? LastRequestUri { get; private set; }
         public string? LastRequestContent { get; private set; }
+        public Dictionary<string, string>? LastRequestHeaders { get; private set; }
 
         public TestHttpMessageHandler(
             HttpStatusCode statusCode = HttpStatusCode.OK,
@@ -282,6 +347,10 @@ public class HttpTelemetryDispatcherTests
         {
             RequestCount++;
             LastRequestUri = request.RequestUri;
+            LastRequestHeaders = request.Headers.ToDictionary(
+                h => h.Key,
+                h => string.Join(",", h.Value));
+
             if (request.Content != null)
             {
                 LastRequestContent = await request.Content.ReadAsStringAsync(cancellationToken);

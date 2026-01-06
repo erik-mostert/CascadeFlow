@@ -29,5 +29,11 @@ namespace Cascade.NServiceBus.Framework
         /// Maximum number of telemetry events to buffer before dropping. Default: 1000
         /// </summary>
         public int BufferSize { get; set; } = 1000;
+
+        /// <summary>
+        /// API key for authenticating with the Cascade collector.
+        /// Can also be set via CASCADE_API_KEY environment variable.
+        /// </summary>
+        public string ApiKey { get; set; }
     }
 }

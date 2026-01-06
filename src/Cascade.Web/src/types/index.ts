@@ -169,3 +169,18 @@ export interface FailureRateOverTime {
   failures: number;
   failureRate: number;
 }
+
+// API Key Types
+export interface ApiKey {
+  id: number;
+  keyPrefix: string;
+  name: string;
+  endpointName: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+  isActive: boolean;
+}
+
+export interface CreateApiKeyResponse extends ApiKey {
+  key: string; // Only returned at creation
+}
