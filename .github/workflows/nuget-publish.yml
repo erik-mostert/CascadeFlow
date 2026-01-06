@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-      - 'framework-v*'
   workflow_dispatch:
     inputs:
       publish:

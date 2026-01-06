@@ -25,7 +25,7 @@
 
     <!-- MinVer configuration -->
     <MinVerDefaultPreReleaseIdentifiers>dev</MinVerDefaultPreReleaseIdentifiers>
-    <MinVerTagPrefix>framework-v</MinVerTagPrefix>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
 
   <ItemGroup>
