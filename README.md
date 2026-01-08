@@ -173,6 +173,19 @@ services:
       - CASCADE_API_KEY=csk_your-api-key-here
 ```
 
+## CORS Configuration
+
+By default, the Collector allows requests from any origin (suitable for private network deployments). To restrict CORS to specific origins:
+
+```bash
+# Single origin
+Cors__AllowedOrigins__0=https://myapp.example.com
+
+# Multiple origins
+Cors__AllowedOrigins__0=https://myapp.example.com
+Cors__AllowedOrigins__1=https://admin.example.com
+```
+
 ## Resilience
 
 The NServiceBus integration is designed to never impact your services:
