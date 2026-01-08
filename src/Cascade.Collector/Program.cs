@@ -45,16 +45,27 @@ builder.Services.AddScoped<IImpactAnalyzer, ImpactAnalyzer>();
 builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
 builder.Services.AddSignalR();
 
-// Configure CORS for frontend development
+// Configure CORS
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+
 builder.Services.AddCors(options =>
 {
-  options.AddDefaultPolicy(policy =>
-  {
-    policy.WithOrigins("http://localhost:5173", "null")
-          .AllowAnyHeader()
-          .AllowAnyMethod()
-          .AllowCredentials();
-  });
+    options.AddDefaultPolicy(policy =>
+    {
+        if (corsOrigins is { Length: > 0 })
+        {
+            policy.WithOrigins(corsOrigins);
+        }
+        else
+        {
+            // Default: allow any origin (for private network deployments)
+            policy.SetIsOriginAllowed(_ => true);
+        }
+
+        policy.WithMethods("GET", "POST", "DELETE", "OPTIONS")
+              .WithHeaders("Content-Type", "X-API-Key", "X-Requested-With", "X-SignalR-User-Agent")
+              .AllowCredentials();
+    });
 });
 
 var app = builder.Build();
