@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getApiKeys, createApiKey, revokeApiKey, deleteApiKey } from '../services/api';
+import { getApiKeys, createApiKey, revokeApiKey, deleteApiKey, AdminKeyRequiredError, setStoredAdminKey, getStoredAdminKey } from '../services/api';
 import type { ApiKey, CreateApiKeyResponse } from '../types';
 
 export function ApiKeysView() {
@@ -9,6 +9,8 @@ export function ApiKeysView() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [newKey, setNewKey] = useState<CreateApiKeyResponse | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+    const [showAdminKeyPrompt, setShowAdminKeyPrompt] = useState(false);
+    const [adminKeyRequired, setAdminKeyRequired] = useState(false);
 
     useEffect(() => {
         loadKeys();
@@ -20,11 +22,23 @@ export function ApiKeysView() {
         try {
             const data = await getApiKeys();
             setKeys(data);
+            setAdminKeyRequired(false);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load API keys');
+            if (err instanceof AdminKeyRequiredError) {
+                setAdminKeyRequired(true);
+                setShowAdminKeyPrompt(true);
+            } else {
+                setError(err instanceof Error ? err.message : 'Failed to load API keys');
+            }
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleAdminKeySubmit = (key: string) => {
+        setStoredAdminKey(key);
+        setShowAdminKeyPrompt(false);
+        loadKeys();
     };
 
     const handleRevoke = async (id: number) => {
@@ -32,7 +46,12 @@ export function ApiKeysView() {
             await revokeApiKey(id);
             await loadKeys();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to revoke key');
+            if (err instanceof AdminKeyRequiredError) {
+                setAdminKeyRequired(true);
+                setShowAdminKeyPrompt(true);
+            } else {
+                setError(err instanceof Error ? err.message : 'Failed to revoke key');
+            }
         }
     };
 
@@ -42,7 +61,12 @@ export function ApiKeysView() {
             setDeleteConfirmId(null);
             await loadKeys();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to delete key');
+            if (err instanceof AdminKeyRequiredError) {
+                setAdminKeyRequired(true);
+                setShowAdminKeyPrompt(true);
+            } else {
+                setError(err instanceof Error ? err.message : 'Failed to delete key');
+            }
         }
     };
 
@@ -51,13 +75,52 @@ export function ApiKeysView() {
         loadKeys();
     };
 
-    if (isLoading) {
+    if (isLoading && !adminKeyRequired) {
         return (
             <div className="bg-gray-800 rounded-lg p-4 h-full flex items-center justify-center">
                 <div className="flex flex-col items-center gap-3">
                     <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                     <p className="text-gray-400">Loading API keys...</p>
                 </div>
+            </div>
+        );
+    }
+
+    // Show admin key required view
+    if (adminKeyRequired && !getStoredAdminKey()) {
+        return (
+            <div className="bg-gray-800 rounded-lg p-4 h-full overflow-auto">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 className="text-xl font-semibold">API Keys</h2>
+                        <p className="text-gray-400 text-sm">
+                            Manage authentication keys for telemetry ingestion
+                        </p>
+                    </div>
+                </div>
+
+                <div className="bg-yellow-900/30 border border-yellow-600 rounded-lg p-6 text-center">
+                    <svg className="w-12 h-12 mx-auto mb-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <h3 className="text-lg font-semibold text-yellow-400 mb-2">Admin Key Required</h3>
+                    <p className="text-gray-300 mb-4">
+                        API key management is protected. Enter the admin key to access this section.
+                    </p>
+                    <button
+                        onClick={() => setShowAdminKeyPrompt(true)}
+                        className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded transition-colors"
+                    >
+                        Enter Admin Key
+                    </button>
+                </div>
+
+                {showAdminKeyPrompt && (
+                    <AdminKeyPromptModal
+                        onSubmit={handleAdminKeySubmit}
+                        onClose={() => setShowAdminKeyPrompt(false)}
+                    />
+                )}
             </div>
         );
     }
@@ -413,4 +476,92 @@ function formatDate(dateString: string): string {
         hour: '2-digit',
         minute: '2-digit',
     });
+}
+
+interface AdminKeyPromptModalProps {
+    onSubmit: (key: string) => void;
+    onClose: () => void;
+}
+
+function AdminKeyPromptModal({ onSubmit, onClose }: AdminKeyPromptModalProps) {
+    const [adminKey, setAdminKey] = useState('');
+    const [error, setError] = useState<string | null>(null);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!adminKey.trim()) {
+            setError('Admin key is required');
+            return;
+        }
+        onSubmit(adminKey.trim());
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+
+            {/* Modal content */}
+            <div className="relative bg-gray-800 rounded-lg w-full max-w-md shadow-2xl">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+                    <h2 className="text-lg font-semibold">Enter Admin Key</h2>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700 transition-colors"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Body */}
+                <form onSubmit={handleSubmit} className="p-4">
+                    <p className="text-gray-400 text-sm mb-4">
+                        API key management requires administrator access. Enter the admin key configured on the Cascade Collector.
+                    </p>
+
+                    {error && (
+                        <div className="bg-red-900/50 border border-red-500 rounded p-3 mb-4">
+                            <p className="text-red-300 text-sm">{error}</p>
+                        </div>
+                    )}
+
+                    <div className="mb-4">
+                        <label className="block text-sm text-gray-400 mb-1">
+                            Admin Key <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            type="password"
+                            value={adminKey}
+                            onChange={(e) => setAdminKey(e.target.value)}
+                            placeholder="Enter admin key"
+                            className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                            autoFocus
+                        />
+                        <p className="text-gray-500 text-xs mt-1">
+                            Set via Cascade__AdminKey environment variable on the Collector
+                        </p>
+                    </div>
+
+                    <div className="flex gap-3 justify-end">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 transition-colors"
+                        >
+                            Submit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
 }

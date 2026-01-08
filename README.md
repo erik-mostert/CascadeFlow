@@ -173,6 +173,43 @@ services:
       - CASCADE_API_KEY=csk_your-api-key-here
 ```
 
+## Admin Key Authentication
+
+The API key management endpoints (`/api/keys`) can be protected with an admin key. This prevents unauthorized users from creating, revoking, or deleting API keys.
+
+### Enabling Admin Key
+
+Set the environment variable on the Collector:
+
+```bash
+Cascade__AdminKey=your-secret-admin-key
+```
+
+When configured:
+- The **Settings** page in the web UI will prompt for the admin key
+- All `/api/keys` endpoints require the `X-Admin-Key` header
+- The admin key is stored in session storage and sent with API key management requests
+
+### Behavior
+
+| Configuration | Behavior |
+|---------------|----------|
+| No admin key set | API key management is unrestricted (development mode) |
+| Admin key set | Requires `X-Admin-Key` header with matching value |
+
+### Docker Example
+
+```yaml
+services:
+  collector:
+    image: ghcr.io/erik-mostert/cascade-collector:main
+    environment:
+      - Cascade__RequireApiKey=true
+      - Cascade__AdminKey=your-secret-admin-key
+    ports:
+      - "5100:8080"
+```
+
 ## CORS Configuration
 
 By default, the Collector allows requests from any origin (suitable for private network deployments). To restrict CORS to specific origins:
