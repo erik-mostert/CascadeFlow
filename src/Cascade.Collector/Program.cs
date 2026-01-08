@@ -434,7 +434,7 @@ app.MapGet("/api/dashboard/failure-rate-over-time", async (
 
   return Results.Ok(result);
 });
-// API Key management endpoints
+// API Key management endpoints (protected by admin key)
 app.MapGet("/api/keys", async (IApiKeyService apiKeyService) =>
 {
     var keys = await apiKeyService.GetAllKeysAsync();
@@ -448,7 +448,7 @@ app.MapGet("/api/keys", async (IApiKeyService apiKeyService) =>
         k.IsActive
     ));
     return Results.Ok(response);
-});
+}).AddEndpointFilter<AdminKeyAuthenticationFilter>();
 
 app.MapPost("/api/keys", async (
     CreateApiKeyRequest request,
@@ -472,7 +472,7 @@ app.MapPost("/api/keys", async (
     );
 
     return Results.Created($"/api/keys/{entity.Id}", response);
-});
+}).AddEndpointFilter<AdminKeyAuthenticationFilter>();
 
 app.MapPost("/api/keys/{id:int}/revoke", async (int id, IApiKeyService apiKeyService) =>
 {
@@ -480,7 +480,7 @@ app.MapPost("/api/keys/{id:int}/revoke", async (int id, IApiKeyService apiKeySer
     return success
         ? Results.Ok(new { revoked = true, id })
         : Results.NotFound(new { error = "API key not found" });
-});
+}).AddEndpointFilter<AdminKeyAuthenticationFilter>();
 
 app.MapDelete("/api/keys/{id:int}", async (int id, IApiKeyService apiKeyService) =>
 {
@@ -488,7 +488,7 @@ app.MapDelete("/api/keys/{id:int}", async (int id, IApiKeyService apiKeyService)
     return success
         ? Results.Ok(new { deleted = true, id })
         : Results.NotFound(new { error = "API key not found" });
-});
+}).AddEndpointFilter<AdminKeyAuthenticationFilter>();
 
 // SPA fallback - serves index.html for non-API routes (must be last)
 app.MapFallbackToFile("index.html");

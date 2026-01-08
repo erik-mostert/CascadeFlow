@@ -175,9 +175,53 @@ export async function getFailureRateOverTime(hours = 24): Promise<FailureRateOve
   return response.json();
 }
 
+// Admin Key Management
+const ADMIN_KEY_STORAGE_KEY = 'cascade_admin_key';
+
+export function getStoredAdminKey(): string | null {
+  return sessionStorage.getItem(ADMIN_KEY_STORAGE_KEY);
+}
+
+export function setStoredAdminKey(key: string): void {
+  sessionStorage.setItem(ADMIN_KEY_STORAGE_KEY, key);
+}
+
+export function clearStoredAdminKey(): void {
+  sessionStorage.removeItem(ADMIN_KEY_STORAGE_KEY);
+}
+
+function getAdminKeyHeaders(): HeadersInit {
+  const adminKey = getStoredAdminKey();
+  if (adminKey) {
+    return { 'X-Admin-Key': adminKey };
+  }
+  return {};
+}
+
+export class AdminKeyRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AdminKeyRequiredError';
+  }
+}
+
+async function handleAdminKeyResponse(response: Response): Promise<void> {
+  if (response.status === 401) {
+    const data = await response.json().catch(() => ({}));
+    if (data.error === 'Admin key required' || data.error === 'Invalid admin key') {
+      clearStoredAdminKey();
+      throw new AdminKeyRequiredError(data.message || 'Admin key required');
+    }
+    throw new Error(data.message || 'Unauthorized');
+  }
+}
+
 // API Key Management
 export async function getApiKeys(): Promise<ApiKey[]> {
-  const response = await fetch(`${API_BASE}/keys`);
+  const response = await fetch(`${API_BASE}/keys`, {
+    headers: getAdminKeyHeaders(),
+  });
+  await handleAdminKeyResponse(response);
   if (!response.ok) {
     throw new Error(`API keys fetch failed: ${response.statusText}`);
   }
@@ -189,9 +233,11 @@ export async function createApiKey(name: string, endpointName?: string): Promise
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...getAdminKeyHeaders(),
     },
     body: JSON.stringify({ name, endpointName: endpointName || null }),
   });
+  await handleAdminKeyResponse(response);
   if (!response.ok) {
     throw new Error(`API key creation failed: ${response.statusText}`);
   }
@@ -201,7 +247,9 @@ export async function createApiKey(name: string, endpointName?: string): Promise
 export async function revokeApiKey(id: number): Promise<void> {
   const response = await fetch(`${API_BASE}/keys/${id}/revoke`, {
     method: 'POST',
+    headers: getAdminKeyHeaders(),
   });
+  await handleAdminKeyResponse(response);
   if (!response.ok) {
     throw new Error(`API key revocation failed: ${response.statusText}`);
   }
@@ -210,7 +258,9 @@ export async function revokeApiKey(id: number): Promise<void> {
 export async function deleteApiKey(id: number): Promise<void> {
   const response = await fetch(`${API_BASE}/keys/${id}`, {
     method: 'DELETE',
+    headers: getAdminKeyHeaders(),
   });
+  await handleAdminKeyResponse(response);
   if (!response.ok) {
     throw new Error(`API key deletion failed: ${response.statusText}`);
   }
