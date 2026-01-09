@@ -223,6 +223,47 @@ Cors__AllowedOrigins__0=https://myapp.example.com
 Cors__AllowedOrigins__1=https://admin.example.com
 ```
 
+## Rate Limiting
+
+Rate limiting is disabled by default. Enable it to protect the API from abuse.
+
+### Enabling Rate Limiting
+
+```bash
+RateLimiting__Enabled=true
+```
+
+### Rate Limit Tiers
+
+| Tier | Endpoints | Default Limit | Partition |
+|------|-----------|---------------|-----------|
+| Telemetry | `/api/telemetry` | 10,000 req/min | Per API Key |
+| Analytics | `/api/dashboard/*`, `/api/impact/*` | 500 req/min | Per IP |
+| Standard | `/api/flows/*`, `/api/topology` | 2,000 req/min | Per IP |
+| Management | `/api/keys/*`, `/api/topology/reset` | 50 req/min | Per IP |
+
+### Overriding Default Limits
+
+```bash
+RateLimiting__Telemetry__PermitLimit=20000
+RateLimiting__Analytics__PermitLimit=1000
+RateLimiting__Standard__PermitLimit=5000
+RateLimiting__Management__PermitLimit=100
+```
+
+### Docker Example
+
+```yaml
+services:
+  collector:
+    image: ghcr.io/erik-mostert/cascade-collector:main
+    environment:
+      - RateLimiting__Enabled=true
+      - RateLimiting__Telemetry__PermitLimit=50000
+    ports:
+      - "5100:8080"
+```
+
 ## Resilience
 
 The NServiceBus integration is designed to never impact your services:

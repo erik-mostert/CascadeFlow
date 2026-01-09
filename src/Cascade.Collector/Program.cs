@@ -1,10 +1,12 @@
-﻿using Cascade.Collector.Data;
+﻿using System.Threading.RateLimiting;
+using Cascade.Collector.Data;
 using Cascade.Collector.Filters;
 using Cascade.Collector.Hubs;
 using Cascade.Collector.Models;
 using Cascade.Collector.Services;
 using Cascade.Core.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
@@ -63,10 +65,86 @@ builder.Services.AddCors(options =>
         }
 
         policy.WithMethods("GET", "POST", "DELETE", "OPTIONS")
-              .WithHeaders("Content-Type", "X-API-Key", "X-Requested-With", "X-SignalR-User-Agent")
+              .WithHeaders("Content-Type", "X-API-Key", "X-Admin-Key", "X-Requested-With", "X-SignalR-User-Agent")
               .AllowCredentials();
     });
 });
+
+// Configure rate limiting (disabled by default)
+var rateLimitingEnabled = builder.Configuration.GetValue("RateLimiting:Enabled", false);
+
+if (rateLimitingEnabled)
+{
+    var config = builder.Configuration;
+
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+        options.OnRejected = async (context, cancellationToken) =>
+        {
+            context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            var retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retry)
+                ? retry.TotalSeconds : 60;
+            await context.HttpContext.Response.WriteAsJsonAsync(new
+            {
+                error = "Rate limit exceeded",
+                message = "Too many requests. Please try again later.",
+                retryAfter
+            }, cancellationToken);
+        };
+
+        // Telemetry: High limit per API key
+        options.AddPolicy("telemetry", context =>
+        {
+            var apiKey = context.Request.Headers["X-API-Key"].FirstOrDefault() ?? "anonymous";
+            return RateLimitPartition.GetSlidingWindowLimiter(apiKey, _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = config.GetValue("RateLimiting:Telemetry:PermitLimit", 10000),
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 6
+            });
+        });
+
+        // Analytics: Medium limit per IP (expensive queries)
+        options.AddPolicy("analytics", context =>
+        {
+            var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            return RateLimitPartition.GetSlidingWindowLimiter(ip, _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = config.GetValue("RateLimiting:Analytics:PermitLimit", 500),
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 6
+            });
+        });
+
+        // Standard: Default limit per IP
+        options.AddPolicy("standard", context =>
+        {
+            var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            return RateLimitPartition.GetSlidingWindowLimiter(ip, _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = config.GetValue("RateLimiting:Standard:PermitLimit", 2000),
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 6
+            });
+        });
+
+        // Management: Strict limit per IP
+        options.AddPolicy("management", context =>
+        {
+            var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            return RateLimitPartition.GetSlidingWindowLimiter(ip, _ => new SlidingWindowRateLimiterOptions
+            {
+                PermitLimit = config.GetValue("RateLimiting:Management:PermitLimit", 50),
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 6
+            });
+        });
+    });
+
+    Console.WriteLine("[Cascade] Rate limiting enabled");
+}
 
 var app = builder.Build();
 
@@ -92,6 +170,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseCors();
+
+if (rateLimitingEnabled)
+{
+    app.UseRateLimiter();
+}
 
 // Serve embedded UI
 app.UseDefaultFiles();
@@ -127,27 +210,32 @@ app.MapPost("/api/telemetry", async (
 
   return Results.Ok(new { received = true, id = telemetry.Id, flowId = flow.CorrelationId });
 })
-.AddEndpointFilter<ApiKeyAuthenticationFilter>();
+.AddEndpointFilter<ApiKeyAuthenticationFilter>()
+.RequireRateLimiting("telemetry");
 
 // Flow endpoints
 app.MapGet("/api/flows", (IFlowAggregator aggregator) =>
-    Results.Ok(aggregator.GetActiveFlows()));
+    Results.Ok(aggregator.GetActiveFlows()))
+    .RequireRateLimiting("standard");
 
 app.MapGet("/api/flows/{correlationId}", (string correlationId, IFlowAggregator aggregator) =>
 {
   var flow = aggregator.GetFlow(correlationId);
   return flow is not null ? Results.Ok(flow) : Results.NotFound();
-});
+}).RequireRateLimiting("standard");
 
 // Topology endpoints
 app.MapGet("/api/topology", (ITopologyAggregator aggregator) =>
-    Results.Ok(aggregator.GetTopology()));
+    Results.Ok(aggregator.GetTopology()))
+    .RequireRateLimiting("standard");
 
 app.MapPost("/api/topology/reset", (ITopologyAggregator aggregator) =>
 {
   aggregator.Reset();
   return Results.Ok(new { reset = true });
-});
+})
+.AddEndpointFilter<AdminKeyAuthenticationFilter>()
+.RequireRateLimiting("management");
 
 // Historical flow queries
 app.MapGet("/api/flows/history", async (
@@ -161,7 +249,7 @@ app.MapGet("/api/flows/history", async (
 
   var flows = await aggregator.GetFlowsInTimeRangeAsync(startTime, endTime, maxResults);
   return Results.Ok(flows);
-});
+}).RequireRateLimiting("standard");
 
 app.MapGet("/api/flows/search", async (
     IFlowAggregator aggregator,
@@ -172,7 +260,7 @@ app.MapGet("/api/flows/search", async (
 {
   var flows = await aggregator.SearchFlowsAsync(endpoint, messageType, hasFailures, maxResults);
   return Results.Ok(flows);
-});
+}).RequireRateLimiting("standard");
 
 app.MapGet("/api/flows/{correlationId}/full", async (
     IFlowAggregator aggregator,
@@ -183,7 +271,7 @@ app.MapGet("/api/flows/{correlationId}/full", async (
       ?? await aggregator.GetFlowFromDatabaseAsync(correlationId);
 
   return flow is not null ? Results.Ok(flow) : Results.NotFound();
-});
+}).RequireRateLimiting("standard");
 
 // Message statistics endpoint
 app.MapGet("/api/stats", async (
@@ -203,7 +291,7 @@ app.MapGet("/api/stats", async (
     FailedFlows = activeFlows.Count(f => f.HasFailures),
     LastUpdated = topology.LastUpdated
   });
-});
+}).RequireRateLimiting("standard");
 
 // Impact analysis endpoints
 app.MapGet("/api/impact/{correlationId}", async (
@@ -221,7 +309,7 @@ app.MapGet("/api/impact/{correlationId}", async (
 
   var metrics = impactAnalyzer.AnalyzeFlow(flow);
   return Results.Ok(metrics);
-});
+}).RequireRateLimiting("analytics");
 
 app.MapGet("/api/impact/summary", async (
     IImpactAnalyzer impactAnalyzer,
@@ -229,7 +317,7 @@ app.MapGet("/api/impact/summary", async (
 {
   var summary = await impactAnalyzer.GetSystemImpactSummaryAsync(flowCount ?? 100);
   return Results.Ok(summary);
-});
+}).RequireRateLimiting("analytics");
 
 app.MapGet("/api/impact/multipliers", async (
     IImpactAnalyzer impactAnalyzer,
@@ -237,7 +325,7 @@ app.MapGet("/api/impact/multipliers", async (
 {
   var multipliers = await impactAnalyzer.GetMultiplierEndpointsAsync(flowCount ?? 100);
   return Results.Ok(multipliers);
-});
+}).RequireRateLimiting("analytics");
 
 // Dashboard statistics endpoints
 app.MapGet("/api/dashboard/stats", async (
@@ -284,7 +372,7 @@ app.MapGet("/api/dashboard/stats", async (
     activeFlows,
     timestamp = now
   });
-});
+}).RequireRateLimiting("analytics");
 
 app.MapGet("/api/dashboard/messages-over-time", async (
     CascadeDbContext db,
@@ -320,7 +408,7 @@ app.MapGet("/api/dashboard/messages-over-time", async (
       .ToList();
 
   return Results.Ok(grouped);
-});
+}).RequireRateLimiting("analytics");
 
 app.MapGet("/api/dashboard/top-endpoints", async (
     CascadeDbContext db,
@@ -358,7 +446,7 @@ app.MapGet("/api/dashboard/top-endpoints", async (
       .ToList();
 
   return Results.Ok(endpoints);
-});
+}).RequireRateLimiting("analytics");
 
 app.MapGet("/api/dashboard/slowest-handlers", async (
     CascadeDbContext db,
@@ -398,7 +486,7 @@ app.MapGet("/api/dashboard/slowest-handlers", async (
       .ToList();
 
   return Results.Ok(handlers);
-});
+}).RequireRateLimiting("analytics");
 
 app.MapGet("/api/dashboard/failure-rate-over-time", async (
     CascadeDbContext db,
@@ -433,7 +521,8 @@ app.MapGet("/api/dashboard/failure-rate-over-time", async (
       .ToList();
 
   return Results.Ok(result);
-});
+}).RequireRateLimiting("analytics");
+
 // API Key management endpoints (protected by admin key)
 app.MapGet("/api/keys", async (IApiKeyService apiKeyService) =>
 {
@@ -448,7 +537,9 @@ app.MapGet("/api/keys", async (IApiKeyService apiKeyService) =>
         k.IsActive
     ));
     return Results.Ok(response);
-}).AddEndpointFilter<AdminKeyAuthenticationFilter>();
+})
+.AddEndpointFilter<AdminKeyAuthenticationFilter>()
+.RequireRateLimiting("management");
 
 app.MapPost("/api/keys", async (
     CreateApiKeyRequest request,
@@ -472,7 +563,9 @@ app.MapPost("/api/keys", async (
     );
 
     return Results.Created($"/api/keys/{entity.Id}", response);
-}).AddEndpointFilter<AdminKeyAuthenticationFilter>();
+})
+.AddEndpointFilter<AdminKeyAuthenticationFilter>()
+.RequireRateLimiting("management");
 
 app.MapPost("/api/keys/{id:int}/revoke", async (int id, IApiKeyService apiKeyService) =>
 {
@@ -480,7 +573,9 @@ app.MapPost("/api/keys/{id:int}/revoke", async (int id, IApiKeyService apiKeySer
     return success
         ? Results.Ok(new { revoked = true, id })
         : Results.NotFound(new { error = "API key not found" });
-}).AddEndpointFilter<AdminKeyAuthenticationFilter>();
+})
+.AddEndpointFilter<AdminKeyAuthenticationFilter>()
+.RequireRateLimiting("management");
 
 app.MapDelete("/api/keys/{id:int}", async (int id, IApiKeyService apiKeyService) =>
 {
@@ -488,7 +583,9 @@ app.MapDelete("/api/keys/{id:int}", async (int id, IApiKeyService apiKeyService)
     return success
         ? Results.Ok(new { deleted = true, id })
         : Results.NotFound(new { error = "API key not found" });
-}).AddEndpointFilter<AdminKeyAuthenticationFilter>();
+})
+.AddEndpointFilter<AdminKeyAuthenticationFilter>()
+.RequireRateLimiting("management");
 
 // SPA fallback - serves index.html for non-API routes (must be last)
 app.MapFallbackToFile("index.html");
